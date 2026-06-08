@@ -1,6 +1,6 @@
 <div align="center">
 
-<img width="1280" height="400" alt="Image" src="https://github.com/user-attachments/assets/93aa456a-a298-49ce-8a5d-859e972a815b" />
+<img width="2560" height="800" alt="recs-banner" src="https://github.com/user-attachments/assets/df7dff87-d812-42e9-ab3d-67b0636c3032" />
 
 # Reflected Entity Component System
 
@@ -343,17 +343,16 @@ In practice, declaring the phases your scene actually has, nesting archetype tag
 
 Built with `xmake f --examples=y`.
 
-![recs_led](https://github.com/user-attachments/assets/a65b0628-7629-421e-9cb8-5b57f5cedcb0)
+https://github.com/user-attachments/assets/e91b8260-3d4f-4a57-83d8-419159961b06
 **recs_led.** ~300k particles assembling into the word "RECS.".
 
-![recs_game](https://github.com/user-attachments/assets/6d2ff7c8-5024-4908-afb6-60cb63e35415)
+https://github.com/user-attachments/assets/58b2178e-064b-45d7-bcee-fdd093e9c069
 **recs_game.** A tiny twin-stick demo (Player + NPC + attacks). 
 
-![recs_balls](https://github.com/user-attachments/assets/f46a08bd-fd4a-47fb-bd47-5973fcdcb2e9)
-
+https://github.com/user-attachments/assets/2ca31776-71e0-44cc-9d06-d48a9144dd23
 **recs_balls.** A million bouncing circles.
 
-![recs_wild](https://github.com/user-attachments/assets/921d75fe-a114-4764-a3ec-61c74ab92c10)
+https://github.com/user-attachments/assets/828829fc-5ee3-4ecf-a94e-cf0b20812bf4
 **recs_wild.** Plants regrow and seed, herbivores graze and flee, predators hunt.
 ## License
 
