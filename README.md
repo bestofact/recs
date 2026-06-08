@@ -94,6 +94,8 @@ xmake test                 # build and run the compile-smoke
 
 The `test` target turns on automatically once the toolchain is on disk.
 
+**Windows.** clang-p2996 needs a GNU-style C++ runtime to link against; the MSVC fuse hasn't produced a working build in testing. `setup-clang-p2996` handles this for you: if no llvm-mingw install is detected (explicit flag, `LLVM_MINGW_PREFIX`, project-local `.toolchains/llvm-mingw`, PATH, scoop, or `C:\llvm-mingw`), it downloads the latest llvm-mingw release into `.toolchains/llvm-mingw/` and uses it as the bootstrap compiler and sysroot for the rest of the build. To reuse an existing install instead, point `--llvm-mingw-prefix` (or `$LLVM_MINGW_PREFIX`) at it.
+
 [P2996]: https://wg21.link/P2996
 [cp]: https://github.com/bloomberg/clang-p2996
 
@@ -136,6 +138,8 @@ A flat aggregate annotated with `[[= recs::component{}]]`. RECS enforces the dat
 | No base classes                       | Layout is exactly the declared fields, in the declared order            |
 | No user-declared member functions     | Behavior lives in systems, not on the data                              |
 | No pointer / reference / nested-indirection members | Storage is self-contained; no hidden lifetime, no aliasing surprise |
+
+The throughline of these rules is contiguity. Other ECS libraries let a component own a `std::vector` or a `std::unique_ptr`, and the moment one of those slips in, the per-entity slab stops being self-contained. Iterating a thousand entities turns into a thousand pointer chases, and the cache layout the ECS was supposed to deliver stops holding. RECS refuses to compile that shape on purpose. Anything that needs heap storage, shared ownership, or external lifetime belongs in a resource, where it lives once per scene and the systems that need it name it explicitly. Components stay flat, queries stay tight, and iteration walks the slab without indirection.
 
 Empty components collapse to a shared instance and cost no storage, which is what makes them work as tags. The same rules apply to nested components; the layout discipline is the whole point.
 
