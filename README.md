@@ -343,16 +343,16 @@ In practice, declaring the phases your scene actually has, nesting archetype tag
 
 Built with `xmake f --examples=y`.
 
-https://github.com/user-attachments/assets/e91b8260-3d4f-4a57-83d8-419159961b06
+![recs_led](https://github.com/user-attachments/assets/e91b8260-3d4f-4a57-83d8-419159961b06)
 **recs_led.** ~300k particles assembling into the word "RECS.".
 
-https://github.com/user-attachments/assets/58b2178e-064b-45d7-bcee-fdd093e9c069
+![recs_game](https://github.com/user-attachments/assets/58b2178e-064b-45d7-bcee-fdd093e9c069)
 **recs_game.** A tiny twin-stick demo (Player + NPC + attacks). 
 
-https://github.com/user-attachments/assets/2ca31776-71e0-44cc-9d06-d48a9144dd23
+![recs_balls](https://github.com/user-attachments/assets/2ca31776-71e0-44cc-9d06-d48a9144dd23)
 **recs_balls.** A million bouncing circles.
 
-https://github.com/user-attachments/assets/828829fc-5ee3-4ecf-a94e-cf0b20812bf4
+![recs wild](https://github.com/user-attachments/assets/828829fc-5ee3-4ecf-a94e-cf0b20812bf4)
 **recs_wild.** Plants regrow and seed, herbivores graze and flee, predators hunt.
 ## License
 
