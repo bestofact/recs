@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -std=c++26
+    - -freflection-latest
+    - -fconstexpr-steps=10000000
+    - -ftemplate-depth=2048
