@@ -353,7 +353,6 @@ namespace recs::meta
 	template<typename... Args>
 	consteval void ensure(const bool in_condition, const std::string_view in_message, Args... in_args)
 	{
-		return;
 		if (!in_condition)
 		{
 			constexpr std::meta::info k_ensure_assert = ^^recs::meta::details::ensure_assert;
