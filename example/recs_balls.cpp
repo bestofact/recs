@@ -167,19 +167,22 @@ namespace balls
 			example::render::k_offset_color_vertex_shader,
 			example::render::k_circle_fragment_shader
 		);
-		out_ctx.m_inner.m_current_instance_count = 0;
+		//out_ctx.m_inner.m_current_instance_count = 0;
 	}
 
 	[[= recs::system{^^Group::RenderWrite}]] void write_ball(
+		const recs::cursor in_cursor,
+		const recs::count in_count,
 		const Position& in_position,
 		const Type::Ball& in_ball,
 		RenderContext& out_ctx
 	)
 	{
-		const int slot = out_ctx.m_inner.m_current_instance_count++;
+		const int slot = in_cursor;
 		out_ctx.m_inner.m_offsets[static_cast<size_t>(slot) * 2] = in_position.m_x;
 		out_ctx.m_inner.m_offsets[static_cast<size_t>(slot) * 2 + 1] = in_position.m_y;
 		out_ctx.m_inner.m_colors[slot] = in_ball.m_color;
+		out_ctx.m_inner.m_current_instance_count = in_count;
 	}
 
 	[[= recs::system{^^Group::RenderFlush}]] void render_pass(

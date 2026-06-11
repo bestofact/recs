@@ -5,6 +5,7 @@
 #include "recs/after.h"
 #include "recs/before.h"
 #include "recs/component.h"
+#include "recs/count.h"
 #include "recs/cursor.h"
 #include "recs/detail/invalid_info.h"
 #include "recs/index.h"
@@ -96,6 +97,7 @@ namespace recs::meta
 	static constexpr std::meta::info k_component = ^^recs::component;
 	static constexpr std::meta::info k_index = ^^recs::index;
 	static constexpr std::meta::info k_cursor = ^^recs::cursor;
+	static constexpr std::meta::info k_count = ^^recs::count;
 	static constexpr std::meta::info k_resource = ^^recs::resource;
 	static constexpr std::meta::info k_schema = ^^recs::schema;
 	static constexpr std::meta::info k_system = ^^recs::system;

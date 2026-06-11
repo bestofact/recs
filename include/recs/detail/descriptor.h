@@ -70,6 +70,15 @@ namespace recs
 	};
 
 	template<std::meta::info Info>
+	requires(Info == recs::meta::k_count)
+	class Descriptor<Info> final
+	{
+	public:
+		static constexpr std::meta::info k_schema = recs::meta::k_invalid_info;
+		static constexpr std::meta::info k_kind = recs::meta::k_count;
+	};
+
+	template<std::meta::info Info>
 	requires(recs::meta::has_annotation(Info, recs::meta::k_component))
 	class Descriptor<Info> final
 	{
@@ -380,14 +389,16 @@ namespace recs
 				Info
 			);
 
-			// Ensure types are either index, component or resource
-			bool references_index = false;
+			// Ensure types are either utility, component or resource
+			size_t utility_parameter_count = 0;
 			constexpr auto k_types = k_metadata.m_types;
 			template for (constexpr std::meta::info k_type : k_types)
 			{
 				constexpr std::meta::info k_kind = recs::Descriptor<k_type>::k_kind;
 				recs::meta::ensure(
 					k_kind == recs::meta::k_index ||
+						k_kind == recs::meta::k_cursor ||
+						k_kind == recs::meta::k_count ||
 						k_kind == recs::meta::k_component ||
 						k_kind == recs::meta::k_resource,
 					"({}) is not a valid type for system ({})",
@@ -395,10 +406,9 @@ namespace recs
 					Info
 				);
 
-				// Keep if we reference to an index, will be useful later.
-				if constexpr (k_kind == recs::meta::k_index)
+				if constexpr (k_kind == recs::meta::k_index || k_kind == recs::meta::k_cursor || k_kind == recs::meta::k_count)
 				{
-					references_index = true;
+					++utility_parameter_count;
 				}
 			}
 
@@ -414,7 +424,7 @@ namespace recs
 			// Ensure we are writing to modified type, if we are modifying a type.
 			constexpr auto k_write_types = k_metadata.m_write_types;
 			recs::meta::ensure(
-				std::meta::is_void_type(k_modified_type) || 
+				std::meta::is_void_type(k_modified_type) ||
 					std::ranges::find(k_write_types, k_modified_type) != k_write_types.end(),
 				"({}) should be writted in system ({})",
 				k_modified_type,
@@ -438,7 +448,7 @@ namespace recs
 			template for (constexpr std::meta::info k_write_type : k_write_types)
 			{
 				recs::meta::ensure(
-					recs::Descriptor<k_write_type>::k_kind == recs::meta::k_resource ||	
+					recs::Descriptor<k_write_type>::k_kind == recs::meta::k_resource ||
 						recs::Descriptor<k_write_type>::k_kind == recs::meta::k_component,
 					"({}) is not a valid write type for system ({})",
 					k_write_type,
@@ -455,7 +465,7 @@ namespace recs
 			// Ensure the read-write-reject sizes (+ possible index) matches with types size.
 			recs::meta::ensure(
 				k_types.size() ==
-					(k_read_types.size() + k_write_types.size() + k_reject_types.size() + (references_index ? 1 : 0)),
+					(k_read_types.size() + k_write_types.size() + k_reject_types.size() + utility_parameter_count),
 				"({}) has mismatch type counts.",
 				Info
 			);

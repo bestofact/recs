@@ -29,6 +29,7 @@ namespace recs
 		template<std::meta::info ParameterType>
 		typename[:ParameterType:] get_system_parameter_value(
 			const typename[:recs::meta::k_cursor:] in_cursor,
+			const typename[:recs::meta::k_count:] in_count,
 			const typename[:recs::meta::k_index:] in_index)
 		{
 			return m_storage.template get<ParameterType>(in_index);
@@ -36,17 +37,29 @@ namespace recs
 
 		template<std::meta::info ParameterType>
 		requires(recs::meta::strip_type(ParameterType) == recs::meta::k_cursor)
-		typename[:ParameterType:] get_system_parameter_value(
+		inline typename[:ParameterType:] get_system_parameter_value(
 			const typename[:recs::meta::k_cursor:] in_cursor,
+			const typename[:recs::meta::k_count:] in_count,
 			const typename[:recs::meta::k_index:] in_index)
 		{
 			return in_cursor;
 		}
 
 		template<std::meta::info ParameterType>
-		requires(recs::meta::strip_type(ParameterType) == recs::meta::k_index)
-		typename[:ParameterType:] get_system_parameter_value(
+		requires(recs::meta::strip_type(ParameterType) == recs::meta::k_count)
+		inline typename[:ParameterType:] get_system_parameter_value(
 			const typename[:recs::meta::k_cursor:] in_cursor,
+			const typename[:recs::meta::k_count:] in_count,
+			const typename[:recs::meta::k_index:] in_index)
+		{
+			return in_count;
+		}
+
+		template<std::meta::info ParameterType>
+		requires(recs::meta::strip_type(ParameterType) == recs::meta::k_index)
+		inline typename[:ParameterType:] get_system_parameter_value(
+			const typename[:recs::meta::k_cursor:] in_cursor,
+			const typename[:recs::meta::k_count:] in_count,
 			const typename[:recs::meta::k_index:] in_index)
 		{
 			return in_index;
@@ -54,7 +67,7 @@ namespace recs
 
 		// Run system for given entity index.
 		template<std::meta::info System, std::meta::info... ParameterTypes>
-		inline void run_system_for_entity(const recs::cursor in_cursor, const recs::index in_index)
+		inline void run_system_for_entity(const recs::cursor in_cursor, const recs::count in_count, const recs::index in_index)
 		{
 			using SystemDescriptor = recs::Descriptor<System>;
 			constexpr std::meta::info k_return_type = SystemDescriptor::k_metadata.m_return_type;
@@ -64,11 +77,11 @@ namespace recs
 
 			if constexpr (std::meta::is_void_type(k_return_type))
 			{
-				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_index)...);
+				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
 			}
 			else if constexpr (recs::meta::is_const_lvalue_reference(k_return_type))
 			{
-				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_index)...);
+				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
 
 				if constexpr(std::ranges::find(k_accept_types, k_modified_type) == k_accept_types.end())
 				{
@@ -77,7 +90,7 @@ namespace recs
 			}
 			else if constexpr (recs::meta::is_pointer_to_const(k_return_type))
 			{
-				const[:k_modified_type:]* result = [:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_index)...);
+				const[:k_modified_type:]* result = [:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
 				if (result != nullptr)
 				{
 					m_query.template set<k_modified_type>(in_index);
@@ -94,11 +107,11 @@ namespace recs
 		inline void run_system()
 		{
 			const std::span<const typename[:recs::meta::k_index:]> view = m_query.template view<System>();
-			const recs::cursor view_size = view.size();
-			for(recs::cursor cursor = 0; cursor < view_size; ++cursor)
+			const recs::count count = view.size();
+			for(recs::cursor cursor = 0; cursor < static_cast<recs::cursor>(count); ++cursor)
 			{
 				const recs::index index = view[cursor];
-				run_system_for_entity<System, ParameterTypes...>(cursor, index);
+				run_system_for_entity<System, ParameterTypes...>(cursor, count, index);
 			}
 		}
 
