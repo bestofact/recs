@@ -5,6 +5,7 @@
 #include "recs/after.h"
 #include "recs/before.h"
 #include "recs/component.h"
+#include "recs/cursor.h"
 #include "recs/detail/invalid_info.h"
 #include "recs/index.h"
 #include "recs/resource.h"
@@ -94,6 +95,7 @@ namespace recs::meta
 	static constexpr std::meta::info k_before = ^^recs::before;
 	static constexpr std::meta::info k_component = ^^recs::component;
 	static constexpr std::meta::info k_index = ^^recs::index;
+	static constexpr std::meta::info k_cursor = ^^recs::cursor;
 	static constexpr std::meta::info k_resource = ^^recs::resource;
 	static constexpr std::meta::info k_schema = ^^recs::schema;
 	static constexpr std::meta::info k_system = ^^recs::system;
@@ -288,7 +290,7 @@ namespace recs::meta
 
 	consteval bool has_annotation(const std::meta::info in_info, const std::meta::info in_annotation)
 	{
-		if(std::meta::is_template(in_info))
+		if (std::meta::is_template(in_info))
 		{
 			return false;
 		}
@@ -369,11 +371,7 @@ namespace recs::meta
 		if (!in_condition)
 		{
 			constexpr std::meta::info k_ensure_assert = ^^recs::meta::details::ensure_assert;
-			std::meta::reflect_invoke(
-				k_ensure_assert,
-				{std::meta::reflect_constant_string(in_message)},
-				{}
-			);
+			std::meta::reflect_invoke(k_ensure_assert, {std::meta::reflect_constant_string(in_message)}, {});
 		}
 	}
 } // namespace recs::meta

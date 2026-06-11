@@ -6,13 +6,13 @@
 
 namespace recs
 {
-	struct index final
+	struct cursor final
 	{
 		using difference_type = int;
 
-		index() = default;
+		cursor() = default;
 
-		constexpr index(const unsigned int in_value) : m_value(in_value)
+		constexpr cursor(const unsigned int in_value) : m_value(in_value)
 		{
 		}
 
@@ -26,28 +26,28 @@ namespace recs
 			return m_value;
 		}
 
-		constexpr index& operator++()
+		constexpr cursor& operator++()
 		{
 			++m_value;
 			return *this;
 		}
 
-		constexpr index operator++(int)
+		constexpr cursor operator++(int)
 		{
-			const index previous = *this;
+			const cursor previous = *this;
 			++m_value;
 			return previous;
 		}
 
-		constexpr index& operator--()
+		constexpr cursor& operator--()
 		{
 			--m_value;
 			return *this;
 		}
 
-		constexpr index operator--(int)
+		constexpr cursor operator--(int)
 		{
-			const index previous = *this;
+			const cursor previous = *this;
 			--m_value;
 			return previous;
 		}
@@ -57,11 +57,11 @@ namespace recs
 } // namespace recs
 
 template<>
-struct std::hash<recs::index>
+struct std::hash<recs::cursor>
 {
 	[[nodiscard]]
-	size_t operator()(const recs::index& in_index) const noexcept
+	size_t operator()(const recs::cursor& in_cursor) const noexcept
 	{
-		return std::hash<unsigned int>{}(in_index.m_value);
+		return std::hash<unsigned int>{}(in_cursor.m_value);
 	}
 };

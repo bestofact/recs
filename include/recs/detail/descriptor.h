@@ -52,12 +52,21 @@ namespace recs
 	};
 
 	template<std::meta::info Info>
-	requires(Info == std::meta::dealias(recs::meta::k_index))
+	requires(Info == recs::meta::k_index)
 	class Descriptor<Info> final
 	{
 	public:
 		static constexpr std::meta::info k_schema = recs::meta::k_invalid_info;
 		static constexpr std::meta::info k_kind = recs::meta::k_index;
+	};
+
+	template<std::meta::info Info>
+	requires(Info == recs::meta::k_cursor)
+	class Descriptor<Info> final
+	{
+	public:
+		static constexpr std::meta::info k_schema = recs::meta::k_invalid_info;
+		static constexpr std::meta::info k_kind = recs::meta::k_cursor;
 	};
 
 	template<std::meta::info Info>

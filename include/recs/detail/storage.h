@@ -111,7 +111,8 @@ namespace recs
 
 			for (const std::meta::info component : k_components)
 			{
-				const std::meta::info storage = std::meta::substitute(k_storage_template, {std::meta::reflect_constant(component)});
+				const std::meta::info storage =
+					std::meta::substitute(k_storage_template, {std::meta::reflect_constant(component)});
 				const std::meta::data_member_options options{};
 				const std::meta::info member = std::meta::data_member_spec(storage, options);
 				entries.push_back({member, std::meta::alignment_of(component), std::meta::size_of(component)});
@@ -119,7 +120,8 @@ namespace recs
 
 			for (const std::meta::info resource : k_resources)
 			{
-				const std::meta::info storage = std::meta::substitute(k_storage_template, {std::meta::reflect_constant(resource)});
+				const std::meta::info storage =
+					std::meta::substitute(k_storage_template, {std::meta::reflect_constant(resource)});
 				const std::meta::data_member_options options{};
 				const std::meta::info member = std::meta::data_member_spec(storage, options);
 				entries.push_back({member, std::meta::alignment_of(resource), std::meta::size_of(resource)});
@@ -204,13 +206,6 @@ namespace recs
 			constexpr std::meta::info k_storage_member = find_storage_member(k_component_type);
 
 			return m_data.[:k_storage_member:].template get<ReturnType>(in_entity_index);
-		}
-
-		template<std::meta::info ReturnType>
-		requires(std::meta::is_integral_type(ReturnType))
-		typename[:recs::meta::k_index:] get(const typename[:recs::meta::k_index:] in_entity_index) const
-		{
-			return in_entity_index;
 		}
 
 	private:
