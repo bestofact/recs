@@ -67,13 +67,15 @@ namespace recs
 
 		// Run system for given entity index.
 		template<std::meta::info System, std::meta::info... ParameterTypes>
-		inline void run_system_for_entity(const recs::cursor in_cursor, const recs::count in_count, const recs::index in_index)
+		inline void run_system_for_entity(
+			const typename[:recs::meta::k_cursor:] in_cursor,
+			const typename[:recs::meta::k_count:] in_count,
+			const typename[:recs::meta::k_index:] in_index)
 		{
 			using SystemDescriptor = recs::Descriptor<System>;
 			constexpr std::meta::info k_return_type = SystemDescriptor::k_metadata.m_return_type;
 			constexpr std::meta::info k_modified_type = SystemDescriptor::k_metadata.m_modified_type;
 			constexpr auto k_accept_types = SystemDescriptor::k_metadata.m_accept_types;
-			constexpr auto k_reject_types = SystemDescriptor::k_metadata.m_reject_types;
 
 			if constexpr (std::meta::is_void_type(k_return_type))
 			{
@@ -107,10 +109,10 @@ namespace recs
 		inline void run_system()
 		{
 			const std::span<const typename[:recs::meta::k_index:]> view = m_query.template view<System>();
-			const recs::count count = view.size();
-			for(recs::cursor cursor = 0; cursor < static_cast<recs::cursor>(count); ++cursor)
+			const typename[:recs::meta::k_count:] count = view.size();
+			for(typename[:recs::meta::k_cursor:] cursor = 0; cursor < static_cast<decltype(cursor)>(count); ++cursor)
 			{
-				const recs::index index = view[cursor];
+				const typename[:recs::meta::k_index:] index = view[cursor];
 				run_system_for_entity<System, ParameterTypes...>(cursor, count, index);
 			}
 		}
