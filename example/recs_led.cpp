@@ -193,9 +193,6 @@ namespace demo
 		float m_phase = 0.0f;
 	};
 
-	struct[[= recs::component{}]] Renderer
-	{
-	};
 } // namespace demo
 
 // Rasterise "RECS" into a screen-space point cloud, called once at start.
@@ -419,10 +416,8 @@ namespace demo
 		io_position.m_y += in_velocity.m_y * in_time.m_delta;
 	}
 
-	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(
-		const Renderer&,
-		RenderContext& out_render_context
-	)
+	// No component filter: runs once per tick.
+	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(RenderContext& out_render_context)
 	{
 		example::render::init_offset_color(
 			out_render_context.m_inner,
@@ -434,7 +429,6 @@ namespace demo
 	}
 
 	[[= recs::system{^^Group::RenderFlush}]] void render_pass(
-		const Renderer&,
 		RenderContext& in_render_context,
 		const Config& in_config
 	)
@@ -502,7 +496,7 @@ namespace demo
 		};
 	}
 
-	[[= recs::system{^^Group::RenderEnd}]] void render_end(const Renderer&)
+	[[= recs::system{^^Group::RenderEnd}]] void render_end()
 	{
 		EndDrawing();
 	}
@@ -518,8 +512,6 @@ int main()
 	auto& window = scene->get<demo::Window>();
 	window.m_width = 1280.0f;
 	window.m_height = 720.0f;
-
-	scene->set<demo::Renderer>(0);
 
 	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	InitWindow(static_cast<int>(window.m_width), static_cast<int>(window.m_height), "RECS - LED");

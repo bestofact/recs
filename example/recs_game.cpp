@@ -8,9 +8,8 @@
 // Schema description
 namespace game
 {
-	static constexpr recs::index k_singleton_index = 0;
-	static constexpr recs::index k_player_index = 1;
-	static constexpr recs::index k_npc_begin = 2;
+	static constexpr recs::index k_player_index = 0;
+	static constexpr recs::index k_npc_begin = 1;
 	static constexpr recs::index k_npc_end = 75'000;
 	static constexpr recs::index k_particle_begin = k_npc_end;
 	static constexpr recs::index k_entity_capacity = 100'000;
@@ -128,10 +127,6 @@ namespace game
 {
 	struct[[= recs::component{}]] Type final
 	{
-		struct[[= recs::component{}]] Singleton final
-		{
-		};
-
 		// Particle is a sibling of Character under Type. Setting Particle on
 		// a slot resets any Character tag and vice versa — slots can be
 		// reused freely between archetypes.
@@ -240,7 +235,8 @@ namespace game
 // Prepare Systems — per-tick resource refreshes.
 namespace game
 {
-	[[= recs::system{^^Group::Prepare}]] void update_time(const Type::Singleton&, Time& out_time)
+	// No component filter: runs once per tick.
+	[[= recs::system{^^Group::Prepare}]] void update_time(Time& out_time)
 	{
 		out_time.m_delta = GetFrameTime();
 		out_time.m_now = GetTime();
@@ -266,7 +262,7 @@ namespace game
 		out_stats.m_health_max = in_health.m_max;
 	}
 
-	[[= recs::system{^^Group::Prepare}]] void clear_attack_registry(const Type::Singleton&, AttackRegistry& out_reg)
+	[[= recs::system{^^Group::Prepare}]] void clear_attack_registry(AttackRegistry& out_reg)
 	{
 		out_reg.m_attacks.clear();
 	}
@@ -1072,14 +1068,14 @@ namespace game
 // Render systems — one phase per layer so cross-layer ordering is free.
 namespace game
 {
-	[[= recs::system{^^Group::RenderBegin}]] void render_begin(const Type::Singleton&)
+	[[= recs::system{^^Group::RenderBegin}]] void render_begin()
 	{
 		BeginDrawing();
 		ClearBackground(Color{8, 10, 18, 255});
 	}
 
 	// Soft dot grid; reads Window so we know how far to tile.
-	[[= recs::system{^^Group::RenderBg}]] void render_grid(const Type::Singleton&, const Window& in_window)
+	[[= recs::system{^^Group::RenderBg}]] void render_grid(const Window& in_window)
 	{
 		constexpr float k_spacing = 36.0f;
 		const Color dot = Color{30, 36, 54, 255};
@@ -1251,7 +1247,6 @@ namespace game
 	}
 
 	[[= recs::system{^^Group::RenderHud}]] void render_hud(
-		const Type::Singleton&,
 		const PlayerStats& in_stats,
 		const Window& in_window
 	)
@@ -1269,7 +1264,7 @@ namespace game
 
 	}
 
-	[[= recs::system{^^Group::RenderEnd}]] void render_end(const Type::Singleton&)
+	[[= recs::system{^^Group::RenderEnd}]] void render_end()
 	{
 		EndDrawing();
 	}
@@ -1286,7 +1281,6 @@ int main()
 	InitWindow(static_cast<int>(window.m_width), static_cast<int>(window.m_height), "recs - game");
 	SetTargetFPS(0);
 
-	scene->set<game::Type::Singleton>(game::k_singleton_index);
 	scene->set<game::Type::Character::Player>(game::k_player_index);
 
 	while (!WindowShouldClose())

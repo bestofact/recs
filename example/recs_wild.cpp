@@ -31,9 +31,7 @@ namespace demo
 	static constexpr recs::index k_predator_begin = k_herbivore_end;
 	static constexpr recs::index k_predator_end = k_predator_begin + k_predator_capacity;
 
-	// Singleton renderer entity, so a `const Renderer&` filter runs once per frame.
-	static constexpr recs::index k_renderer_index = k_predator_end;
-	static constexpr recs::index k_entity_capacity = k_renderer_index + 1;
+	static constexpr recs::index k_entity_capacity = k_predator_end;
 
 	// Phases in execution order. The three Write* sub-phases keep each
 	// species' renderer slice contiguous without explicit edges.
@@ -272,16 +270,12 @@ namespace demo
 	{
 	};
 
-	struct[[= recs::component{}]] Renderer
-	{
-	};
 } // namespace demo
 
 namespace demo
 {
-	// Runs once on the Renderer singleton: reset per-frame shared state.
+	// No component filter: runs once per tick, resetting per-frame shared state.
 	[[= recs::system{^^Group::Reset}]] void clear_per_frame(
-		const Renderer&,
 		SpatialGrid& out_grid,
 		DeathFlags& out_flags,
 		Stats& out_stats
@@ -1198,7 +1192,7 @@ namespace demo
 		return &out_energy;
 	}
 
-	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(const Renderer&, RenderContext& out_ctx)
+	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(RenderContext& out_ctx)
 	{
 		example::render::init_transform_color(
 			out_ctx.m_inner,
@@ -1348,7 +1342,7 @@ namespace demo
 		};
 	}
 
-	[[= recs::system{^^Group::RenderInit}]] void snapshot_stats(const Renderer&, Stats& out_stats, const Time& in_time)
+	[[= recs::system{^^Group::RenderInit}]] void snapshot_stats(Stats& out_stats, const Time& in_time)
 	{
 		if (in_time.m_paused)
 		{
@@ -1416,7 +1410,7 @@ namespace demo
 		plot(stats.m_pred_hist, Color{240, 90, 100, 240});
 	}
 
-	[[= recs::system{^^Group::RenderPass}]] void render_pass(const Renderer&, RenderContext& out_ctx, const Stats& in_stats, const Time& in_time)
+	[[= recs::system{^^Group::RenderPass}]] void render_pass(RenderContext& out_ctx, const Stats& in_stats, const Time& in_time)
 	{
 		BeginDrawing();
 		ClearBackground(Color{10, 12, 18, 255});
@@ -1450,7 +1444,7 @@ namespace demo
 		DrawFPS(20, 690);
 	}
 
-	[[= recs::system{^^Group::RenderEnd}]] void render_end(const Renderer&)
+	[[= recs::system{^^Group::RenderEnd}]] void render_end()
 	{
 		EndDrawing();
 	}
@@ -1503,7 +1497,7 @@ static void reset_populations(Scene& scene)
 {
 	// Tag every slot Dying; kill_* tears the components down on the next run().
 	// Re-seeded BirthQueue refills via respawn_* on the same frame.
-	for (recs::index i = 0; i < demo::k_renderer_index; ++i)
+	for (recs::index i = 0; i < demo::k_entity_capacity; ++i)
 	{
 		scene.set<demo::Dying>(i);
 	}
@@ -1518,8 +1512,6 @@ int main()
 	auto& window = scene->get<demo::Window>();
 	window.m_width = 1280.0f;
 	window.m_height = 720.0f;
-
-	scene->set<demo::Renderer>(demo::k_renderer_index);
 
 	auto& grid = scene->get<demo::SpatialGrid>();
 	grid.m_cols = static_cast<int>(window.m_width) / demo::SpatialGrid::k_cell_size + 1;

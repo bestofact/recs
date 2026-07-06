@@ -28,7 +28,7 @@ namespace balls
 	};
 
 	struct[[= recs::schema{
-		.entity_capacity = k_ball_count + 1,
+		.entity_capacity = k_ball_count,
 		.group_enum = ^^Group,
 		.default_group = ^^Group::Update
 	}]] Schema
@@ -71,13 +71,6 @@ namespace balls
 		struct[[= recs::component{}]] Ball
 		{
 			Color m_color = WHITE;
-		};
-
-		// Singleton entity that owns the per-frame renderer systems. Sibling of
-		// Ball, so setting Renderer on entity 0 also resets Ball on it; the
-		// renderer entity never wanders into the ball update loops.
-		struct[[= recs::component{}]] Renderer
-		{
 		};
 	};
 
@@ -152,14 +145,12 @@ namespace balls
 		}
 	}
 
-	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(
-		const Type::Renderer&,
-		RenderContext& out_ctx
-	)
+	// No component filter: runs once per tick.
+	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(RenderContext& out_ctx)
 	{
 		example::render::init_offset_color(
 			out_ctx.m_inner,
-			k_ball_count + 1,
+			k_ball_count,
 			example::render::k_offset_color_vertex_shader,
 			example::render::k_circle_fragment_shader
 		);
@@ -181,10 +172,7 @@ namespace balls
 		out_ctx.m_inner.m_current_instance_count = in_count;
 	}
 
-	[[= recs::system{^^Group::RenderFlush}]] void render_pass(
-		const Type::Renderer&,
-		RenderContext& out_ctx
-	)
+	[[= recs::system{^^Group::RenderFlush}]] void render_pass(RenderContext& out_ctx)
 	{
 		BeginDrawing();
 		ClearBackground(BLACK);
@@ -202,7 +190,8 @@ namespace balls
 		DrawFPS(10, 10);
 	}
 
-	[[= recs::system{^^Group::RenderEnd}]] void end_frame(const Type::Renderer&)
+	// Zero parameters is fine too: no filter, no resources, once per tick.
+	[[= recs::system{^^Group::RenderEnd}]] void end_frame()
 	{
 		EndDrawing();
 	}
@@ -217,8 +206,6 @@ int main()
 
 	auto& window = scene->get<balls::Window>();
 	InitWindow(static_cast<int>(window.m_width), static_cast<int>(window.m_height), "recs - balls");
-
-	scene->set<balls::Type::Renderer>(0);
 
 	while (!WindowShouldClose())
 	{
