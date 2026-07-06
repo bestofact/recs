@@ -65,9 +65,10 @@ namespace recs
 			return in_index;
 		}
 
-		// Run system for given entity index.
+		// Run system for given entity index. Returns false when a bool-returning
+		// system requests that the iteration stops for this frame.
 		template<std::meta::info System, std::meta::info... ParameterTypes>
-		inline void run_system_for_entity(
+		inline bool run_system_for_entity(
 			const typename[:recs::meta::k_cursor:] in_cursor,
 			const typename[:recs::meta::k_count:] in_count,
 			const typename[:recs::meta::k_index:] in_index)
@@ -75,22 +76,25 @@ namespace recs
 			using SystemDescriptor = recs::Descriptor<System>;
 			constexpr std::meta::info k_return_type = SystemDescriptor::k_metadata.m_return_type;
 			constexpr std::meta::info k_modified_type = SystemDescriptor::k_metadata.m_modified_type;
-			constexpr auto k_accept_types = SystemDescriptor::k_metadata.m_accept_types;
-
 			if constexpr (std::meta::is_void_type(k_return_type))
 			{
 				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
 			}
+			else if constexpr (std::meta::dealias(k_return_type) == ^^bool)
+			{
+				return [:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
+			}
 			else if constexpr (recs::meta::is_const_lvalue_reference(k_return_type))
 			{
 				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
-
-				if constexpr(std::ranges::find(k_accept_types, k_modified_type) == k_accept_types.end())
-				{
-					m_query.template set<k_modified_type>(in_index);
-				}
+				m_query.template set<k_modified_type>(in_index);
 			}
-			else if constexpr (recs::meta::is_pointer_to_const(k_return_type))
+			else if constexpr (recs::meta::is_mutable_rvalue_reference(k_return_type))
+			{
+				[:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
+				m_query.template reset<k_modified_type>(in_index);
+			}
+			else if constexpr (recs::meta::is_pointer_to_const(k_return_type) || recs::meta::is_pointer_to_mutable(k_return_type))
 			{
 				const[:k_modified_type:]* result = [:System:](get_system_parameter_value<ParameterTypes>(in_cursor, in_count, in_index)...);
 				if (result != nullptr)
@@ -102,18 +106,36 @@ namespace recs
 					m_query.template reset<k_modified_type>(in_index);
 				}
 			}
+			return true;
 		}
 
 		// Evaluate query for given system and call it on each set entity.
+		// Systems that filter no components run exactly once per tick instead.
 		template<std::meta::info System, std::meta::info... ParameterTypes>
 		inline void run_system()
 		{
-			const std::span<const typename[:recs::meta::k_index:]> view = m_query.template view<System>();
-			const typename[:recs::meta::k_count:] count = view.size();
-			for(typename[:recs::meta::k_cursor:] cursor = 0; cursor < static_cast<decltype(cursor)>(count); ++cursor)
+			using SystemDescriptor = recs::Descriptor<System>;
+			constexpr bool k_filters_components = !SystemDescriptor::k_metadata.m_accept_types.empty() ||
+												  !SystemDescriptor::k_metadata.m_reject_types.empty();
+			if constexpr (!k_filters_components)
 			{
-				const typename[:recs::meta::k_index:] index = view[cursor];
-				run_system_for_entity<System, ParameterTypes...>(cursor, count, index);
+				// No per-entity parameters exist on such systems; the cursor, count
+				// and index arguments are never read.
+				run_system_for_entity<System, ParameterTypes...>(0, 0, 0);
+				return;
+			}
+			else
+			{
+				const std::span<const typename[:recs::meta::k_index:]> view = m_query.template view<System>();
+				const recs::count count = view.size();
+				for(recs::cursor cursor = 0; cursor < static_cast<recs::cursor>(count); ++cursor)
+				{
+					const recs::index index = view[cursor];
+					if (!run_system_for_entity<System, ParameterTypes...>(cursor, count, index))
+					{
+						break;
+					}
+				}
 			}
 		}
 
@@ -194,19 +216,46 @@ namespace recs
 		}
 
 		// Set the existence of a component for an entity in the query.
+		// A no-op for components no system queries (aside from hierarchy cascades).
 		template<typename ComponentType>
-		requires(Query::is_queried(^^ComponentType))
+		requires(recs::Descriptor<^^ComponentType>::k_kind == recs::meta::k_component && Storage::is_stored(^^ComponentType))
 		void set(const typename[:recs::meta::k_index:] in_entity_index)
 		{
 			m_query.template set<^^ComponentType>(in_entity_index);
 		}
 
 		// Reset the existence of a component for an entity in the query.
+		// A no-op for components no system queries (aside from hierarchy cascades).
 		template<typename ComponentType>
-		requires(Query::is_queried(^^ComponentType))
+		requires(recs::Descriptor<^^ComponentType>::k_kind == recs::meta::k_component && Storage::is_stored(^^ComponentType))
 		void reset(const typename[:recs::meta::k_index:] in_entity_index)
 		{
 			m_query.template reset<^^ComponentType>(in_entity_index);
+		}
+
+		// Returns the index of the first entity that has no component set, or
+		// recs::invalid_index when every slot is in use.
+		[[nodiscard]]
+		typename[:recs::meta::k_index:] next() const
+		{
+			constexpr typename[:recs::meta::k_index:] k_entity_capacity = SchemaDescriptor::k_metadata.m_entity_capacity;
+			for (typename[:recs::meta::k_index:] index = 0; index < k_entity_capacity; ++index)
+			{
+				if (m_query.is_entity_empty(index))
+				{
+					return index;
+				}
+			}
+			return recs::invalid_index;
+		}
+
+		// Resets every component on the given entity.
+		void free(const typename[:recs::meta::k_index:] in_entity_index)
+		{
+			template for (constexpr std::meta::info k_component : SchemaDescriptor::k_metadata.m_components)
+			{
+				m_query.template reset<k_component>(in_entity_index);
+			}
 		}
 
 		// Initialize the scene. Resets all component. Call is left to user as resetting all components migh take some

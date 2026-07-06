@@ -598,6 +598,9 @@ namespace game
 {
 	// Movement -----------------------------------------------------------------
 
+	// Adding a component and refreshing it are two systems now: the const T&
+	// return only visits entities that lack Velocity, the void twin keeps it in
+	// sync with the input on entities that already have it.
 	[[= recs::system{
 		^^Group::Update
 	}]] const Velocity& add_velocity(Velocity& out_velocity, const MoveInput& in_move_input, const Speed& in_speed)
@@ -607,43 +610,44 @@ namespace game
 		return out_velocity;
 	}
 
-	[[= recs::system{^^Group::Update}]] const Position& update_position(
+	[[= recs::system{
+		^^Group::Update
+	}]] void update_velocity(Velocity& out_velocity, const MoveInput& in_move_input, const Speed& in_speed)
+	{
+		out_velocity.m_x = in_move_input.m_x * in_speed.m_value;
+		out_velocity.m_y = in_move_input.m_y * in_speed.m_value;
+	}
+
+	[[= recs::system{^^Group::Update}]] void update_position(
 		Position& out_position,
-		const Position& in_position,
 		const Velocity& in_velocity,
 		const Time& in_time
 	)
 	{
-		out_position.m_x = in_position.m_x + in_velocity.m_x * in_time.m_delta;
-		out_position.m_y = in_position.m_y + in_velocity.m_y * in_time.m_delta;
-		return out_position;
+		out_position.m_x += in_velocity.m_x * in_time.m_delta;
+		out_position.m_y += in_velocity.m_y * in_time.m_delta;
 	}
 
 	// Particle lifetime + drag --------------------------------------------------
 
-	[[= recs::system{^^Group::Update}]] const Lifetime& tick_lifetime(
+	[[= recs::system{^^Group::Update}]] void tick_lifetime(
 		Lifetime& out_lifetime,
-		const Lifetime& in_lifetime,
 		const Time& in_time
 	)
 	{
-		out_lifetime.m_remaining = in_lifetime.m_remaining - in_time.m_delta;
-		out_lifetime.m_max = in_lifetime.m_max;
-		return out_lifetime;
+		out_lifetime.m_remaining -= in_time.m_delta;
 	}
 
 	// Particle velocity decays toward zero — gives sparks their soft trail.
-	[[= recs::system{^^Group::Update}]] const Velocity& particle_drag(
+	[[= recs::system{^^Group::Update}]] void particle_drag(
 		Velocity& out_velocity,
-		const Velocity& in_velocity,
 		const Type::Particle&,
 		const Time& in_time
 	)
 	{
 		const float drag = std::exp(-3.5f * in_time.m_delta);
-		out_velocity.m_x = in_velocity.m_x * drag;
-		out_velocity.m_y = in_velocity.m_y * drag;
-		return out_velocity;
+		out_velocity.m_x *= drag;
+		out_velocity.m_y *= drag;
 	}
 
 	// Attack emission ----------------------------------------------------------
@@ -740,15 +744,14 @@ namespace game
 
 	// Damage application -------------------------------------------------------
 
-	[[= recs::system{^^Group::Update}]] const Health& apply_damage_to_player(
+	[[= recs::system{^^Group::Update}]] void apply_damage_to_player(
 		Health& out_health,
-		const Health& in_health,
 		const Type::Character::Player&,
 		const Position& in_position,
 		const AttackRegistry& in_registry
 	)
 	{
-		float h = in_health.m_value;
+		float h = out_health.m_value;
 		for (const AttackRegistry::Data& attack : in_registry.m_attacks)
 		{
 			if (!attack.m_hurt_player)
@@ -763,19 +766,16 @@ namespace game
 			}
 		}
 		out_health.m_value = h;
-		out_health.m_max = in_health.m_max;
-		return out_health;
 	}
 
-	[[= recs::system{^^Group::Update}]] const Health& apply_damage_to_npc(
+	[[= recs::system{^^Group::Update}]] void apply_damage_to_npc(
 		Health& out_health,
-		const Health& in_health,
 		const Type::Character::NPC&,
 		const Position& in_position,
 		const AttackRegistry& in_registry
 	)
 	{
-		float h = in_health.m_value;
+		float h = out_health.m_value;
 		for (const AttackRegistry::Data& attack : in_registry.m_attacks)
 		{
 			if (attack.m_hurt_player)
@@ -790,8 +790,6 @@ namespace game
 			}
 		}
 		out_health.m_value = h;
-		out_health.m_max = in_health.m_max;
-		return out_health;
 	}
 
 	// Death detection ----------------------------------------------------------

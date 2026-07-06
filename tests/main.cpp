@@ -1,4 +1,5 @@
 static_assert(true); // -> This breaks the clangd cache, which causes a ghost clangd error otherwise.
+#include "features.h"
 #include "scene.h"
 
 #include <memory>
@@ -139,5 +140,7 @@ int main()
 
 	scene->run();
 
-	return verify_global_data(scene.get(), expected) ? 0 : 1;
+	const bool global_data_ok = verify_global_data(scene.get(), expected);
+	const bool features_ok = test_features::run();
+	return (global_data_ok && features_ok) ? 0 : 1;
 }

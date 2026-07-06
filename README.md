@@ -42,23 +42,19 @@ namespace game
     };
 
     // A system is just a free function. Its signature is its query:
-    //   Position&         : the component this system writes to.
+    //   Position&         : write access to Position; entity must have it (in-place update).
     //   const recs::index : index of the iterated entity.
-    //   const Position&   : entity must have Position (read access).
     //   const Velocity&   : entity must have Velocity (read access).
     //   const Clock&      : inject the Clock resource, does not contribute to the query.
-    // -> const Position&  : set the Position component on every iterated entity.
     [[= recs::system{}]]
-    const Position& update_position(
-        Position& out,
+    void update_position(
+        Position& p,
         const recs::index i,
-        const Position& p,
         const Velocity& v,
         const Clock& c)
     {
-        out.x = p.x + v.x * c.dt * static_cast<float>(i);
-        out.y = p.y + v.y * c.dt * static_cast<float>(i);
-        return out;
+        p.x += v.x * c.dt * static_cast<float>(i);
+        p.y += v.y * c.dt * static_cast<float>(i);
     }
 
     // The schema marks the namespace as a RECS scene.
@@ -106,12 +102,12 @@ The `test` target turns on automatically once the toolchain is on disk.
 RECS uses C++26 reflection to do at compile time what most ECS libraries handle at runtime. A few things follow from that:
 
 - **The system signature is the query.** Parameters declare both access (`const T&`, `T&`) and exclusion (`T&&`). The function's parameter list is the only place a query lives, and the engine never dispatches a system on an entity that doesn't match.
-- **The return type is the intended way to add or remove a component.** `void` leaves the entity unchanged, `const T&` sets `T`, `const T*` sets `T` when non-null and resets it when null. RECS doesn't ship a `commands` or `world` argument; the return is what the scheduler reads when deciding who depends on whom.
+- **The return type is the intended way to add or remove a component.** `void` leaves the entity unchanged, `const T&` sets `T` (and only visits entities that lack it), `const T*` sets `T` when non-null and resets it when null, `T&&` resets `T` (and only visits entities that have it), and `bool` returns `false` to stop the system's iteration for the frame. RECS doesn't ship a `commands` or `world` argument; the return is what the scheduler reads when deciding who depends on whom.
 - **The schedule is inferred from signatures.** Read-after-write on a component, sibling exclusion through component hierarchies, and group enum order combine into a DAG at compile time, and the build fails by name if it cycles. `[[=recs::after{^^other}]]` and `[[=recs::before{^^other}]]` exist as escape hatches for cycles the inference can't resolve.
 - **Component hierarchies model archetypes.** Nesting `Plant`, `Herbivore`, and `Predator` inside a `Species` component means `set<Species::Plant>(i)` asserts `Species` and resets the other two siblings. Two systems that filter on different siblings are treated as disjoint, with no dependency edge between them.
 - **Per-system bitsets, not a central table.** Each system owns a small bitset over the components it queries. Add and remove are O(1) and only touch the systems that asked about the changed component. There is no archetype migration on a flip and no "who has what" lookup on a query.
 - **Static dispatch end to end.** `get<T>`, system invocation, and storage lookup are resolved at compile time. No virtual calls, no type erasure, no runtime registry. Empty systems cost nothing.
-- **Misuse turns into a compile error.** A component holding a `std::vector`, a system with two writes to the same type, a cyclic schedule. The diagnostic names the offending type or pair, so there is no "forgot to register X" surprise at runtime.
+- **Misuse turns into a compile error.** A component holding a `std::vector`, a system with two writes to the same type, a set-returning system that reads the component it sets, a once-per-tick system asking for an entity index, a cyclic schedule. The diagnostic names the offending type or pair, so there is no "forgot to register X" surprise at runtime.
 
 ---
 
@@ -126,6 +122,8 @@ An index isn't a component and exists for every entity, so it doesn't contribute
 [[= recs::system{}]]
 void log(const Position& p, const recs::index i) { /* ... */ }
 ```
+
+`recs::cursor` and `recs::count` are sister types: `cursor` is the 0..N-1 position of the current entity within the system's matched view this tick, `count` is the size of that view. Add them to a signature whenever you need to write into a packed output buffer indexed per-tick rather than per-entity.
 
 ### `recs::component`
 
@@ -189,7 +187,7 @@ struct [[= recs::resource{}]] Input { float mouse_x, mouse_y; bool down; };
 
 ### `recs::system`
 
-A free function annotated with `[[= recs::system{}]]`. The function runs once per matching entity; the engine handles the iteration. The signature alone tells RECS three things: which entities the function may visit, what it may read or write, and how the function fits into the schedule. RECS doesn't pass in a `world` or `commands` argument by default, so the body normally operates inside those declared edges.
+A free function annotated with `[[= recs::system{}]]`. The function runs once per matching entity — or once per tick, if it filters no components — and the engine handles the iteration. The signature alone tells RECS three things: which entities the function may visit, what it may read or write, and how the function fits into the schedule. RECS doesn't pass in a `world` or `commands` argument by default, so the body normally operates inside those declared edges.
 
 **Parameters express the query.**
 
@@ -201,18 +199,24 @@ A free function annotated with `[[= recs::system{}]]`. The function runs once pe
 | `const R&` (resource) | read access to resource `R`; does not contribute to the query                                  |
 | `R&` (resource)       | write access to resource `R`; does not contribute to the query                                 |
 | `recs::index`         | the current entity's index; does not contribute to the query                                   |
+| `recs::cursor`        | the 0..N-1 position of this entity inside the matched view; does not contribute to the query   |
+| `recs::count`         | the size of the matched view this tick; does not contribute to the query                       |
 
-Every system must filter on at least one component. Pure resource-only or pure index-only systems are rejected at compile time. Duplicate read or duplicate write entries are also rejected.
+A system that filters no components (resource-only) is allowed and runs exactly **once per tick** instead of once per entity; since there is no iterated entity, `recs::index`, `recs::cursor` and `recs::count` parameters are rejected for it at compile time. Duplicate read or duplicate write entries are also rejected.
 
 **The return type is the only way to add or remove a component.**
 
-| Return     | Effect                                                                       |
-| ---------- | ---------------------------------------------------------------------------- |
-| `void`     | structural state of the entity is left alone                                 |
-| `const T&` | unconditionally `set<T>` on the iterated entity                              |
-| `const T*` | non-null `set<T>`, null `reset<T>`                                           |
+| Return     | Effect                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------ |
+| `void`     | structural state of the entity is left alone                                                     |
+| `const T&` | unconditionally `set<T>`; `T` is **enforced as a reject**, so the system only visits entities that *lack* `T` |
+| `const T*` / `T*` | non-null `set<T>`, null `reset<T>`; the system decides per entity, so no filter is inferred |
+| `T&&`      | unconditionally `reset<T>`; `T` is **enforced as an accept**, so the system only visits entities that *have* `T` |
+| `bool`     | structural state of the entity is left alone; `false` ends this system's iteration for the frame |
 
-If the return type names a component, the system must also have a writable parameter to it (`T&` in the signature). Together this means each system body normally flips the presence of *at most one* component per entity. There is no built-in API for "remove A and add B in the same pass"; that's two systems.
+The enforced filters make the two unconditional forms self-limiting: a `const T&` system initializes `T` exactly once per entity (it stops matching the moment `T` is set), and a `T&&` system only ever sees entities it can actually strip. Two parameter rules follow. A `const T&`-returning system still takes `T&` as the out-slot for the component's data, but `const T&` of the same `T` is a compile error — the entity never has `T` on entry, so there is nothing to read. A `T&&`-returning system cannot take `T&&` of the same `T` — rejecting what you are about to remove is a contradiction; `T&`/`const T&` are fine for a last look at the data.
+
+If the return type names a component with `const T&` or `const T*`, the system must also have a writable parameter to it (`T&` in the signature). `T&&` returns don't need one: the removal itself counts as the system's write on `T`, so the scheduler still orders readers of `T` after it. To *update* a component in place, don't return it — take `T&` and return `void`; the write access is the query and no structural change happens. Each system body normally flips the presence of *at most one* component per entity. There is no built-in API for "remove A and add B in the same pass"; that's two systems.
 
 The rule is deliberate. A system is a free function with no registration step, so splitting one system into two costs nothing more than typing another function header. The payoff is granularity. Each system reads a small bitset, mutates one bit, and exposes one read/write edge to the scheduler. Monolithic "do five things to this entity" functions never appear, and dependency graphs stay sparse.
 
@@ -221,25 +225,25 @@ The rule is deliberate. A system is a free function with no registration step, s
 **Groups place a system in a phase.** The optional enumerator passed to `system{}` (or the schema's default group) pins the system to a stage; cross-group order is fixed by enum order, and no read/write inference runs across the boundary:
 
 ```cpp
-// Position& : Write access to position component. Doesn't contribute to query since system sets the Position component.
-// Position&&: Entity must lack Position component.
+// Position& : Out-slot for the component's data. Doesn't contribute to the query since the system sets Position.
 // const recs::index: Index of iterated entity.
-// -> const Position& : System will set the Position component once it finishes.
+// -> const Position& : Sets Position; the return also enforces Position as a reject,
+//                      so this only visits entities that don't have one yet.
 [[= recs::system{^^Group::Init}]]
-const Position& seed(Position& out, Position&&, const recs::index i)
+const Position& seed(Position& out, const recs::index i)
 {
     out.x = static_cast<float>(i);
     out.y = 0.0f;
     return out;
 }
 
-// No explicit group. Guaranteed to run after Init group.
+// In-place update: void return, Position& is an accepted write.
+// Guaranteed to run after the Init group.
 [[= recs::system{^^Group::Update}]]
-const Position& integrate(Position& out, const Position& p, const Velocity& v, const Clock& c)
+void integrate(Position& p, const Velocity& v, const Clock& c)
 {
-    out.x = p.x + v.x * c.dt;
-    out.y = p.y + v.y * c.dt;
-    return out;
+    p.x += v.x * c.dt;
+    p.y += v.y * c.dt;
 }
 ```
 
@@ -252,7 +256,7 @@ Annotations that pin the order between two systems in the same group. They overr
 void log_position(const Position& p, const recs::index i) { /* ... */ }
 
 [[= recs::system{^^Group::Update}, = recs::before{^^integrate}]]
-const Velocity& damp_velocity(Velocity& out, const Velocity& v) { /* ... */ }
+void damp_velocity(Velocity& v) { /* ... */ }
 ```
 
 These are escape hatches, not the default tool. Reach for them only when two systems write each other's reads (a true cycle the analyzer cannot resolve), or when you need a deterministic order between two systems whose signatures don't imply one. Sprinkling `after`/`before` to nudge the schedule by hand defeats the inference and makes the dependency story harder to read.
@@ -298,6 +302,10 @@ The public API is small:
 | `set<C>(entity)`                | Marks component `C` as present on `entity`. Cascades to the parent and resets siblings if `C` is in a hierarchy. |
 | `reset<C>(entity)`              | Marks component `C` as absent on `entity`. Cascades to every descendant.                                         |
 | `get<T>(entity = 0)`            | Returns a reference to component or resource `T`. The index is ignored for resources.                            |
+| `next()`                        | Returns the first entity with no component set, or `recs::invalid_index` when every slot is in use.              |
+| `free(entity)`                  | Resets every component on `entity`, returning the slot to `next()`.                                              |
+
+`set`/`reset` of a component no system queries compiles and is a no-op (aside from hierarchy cascades) — presence is only tracked through the systems that ask about it.
 
 A typical lifecycle:
 
@@ -305,25 +313,29 @@ A typical lifecycle:
 recs::scene<^^game::Schema> scene;
 scene.init();
 
-// Seed some entities.
-scene.set<game::Position>(0);
-scene.set<game::Velocity>(0);
-scene.get<game::Position>(0) = {.x = 10.0f, .y = 0.0f};
+// Seed an entity in the first free slot.
+const recs::index entity = scene.next();
+scene.set<game::Position>(entity);
+scene.set<game::Velocity>(entity);
+scene.get<game::Position>(entity) = {.x = 10.0f, .y = 0.0f};
 
 // One tick.
 scene.run();
 
 // Read back.
-const game::Position& position = scene.get<game::Position>(0);
+const game::Position& position = scene.get<game::Position>(entity);
+
+// Return the slot; next() will hand it out again.
+scene.free(entity);
 ```
 
-`init()` must run before any `set`/`reset`/`get` calls, because the component bitsets are uninitialized on a fresh scene. After that, `run()` may be called as many times as you want; transient components reset at the end of each tick so they only live for one frame.
+`init()` must run before the first `set`/`reset` or `run()`: it walks every component on every entity once so the query bookkeeping starts from a known "everything absent" state (reject filters count as satisfied only after that pass). After that, `run()` may be called as many times as you want; transient components reset at the end of each tick so they only live for one frame.
 
 ---
 
 ## How the schedule gets built
 
-RECS classifies each pair of systems using the following rules. They are checked in order, and the first rule that matches decides the relationship for that pair. Pairs that no rule pins down are free to run in either order.
+RECS classifies each pair of systems using the following rules. They are checked in order, and the first rule that matches decides the relationship for that pair. Pairs that no rule pins down are free to run in either order. The filters and writes enforced by structural returns count exactly like explicit parameters here: a `const T&` return contributes a reject and a write on `T`, a `T&&` return contributes an accept and a write on `T`.
 
 1. **Different groups: the enum decides.** Systems in different groups follow the order of the group enum. No read/write inference runs across a group boundary, so a `Group` enum on the schema collapses most ordering decisions into a single declaration.
 

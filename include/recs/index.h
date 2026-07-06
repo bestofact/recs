@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 
 namespace recs
 {
@@ -54,6 +55,10 @@ namespace recs
 
 		unsigned int m_value = 0;
 	};
+
+	// Unified sentinel for "no entity". Equals the maximum representable
+	// recs::index value, so it can never collide with a valid slot.
+	inline constexpr index invalid_index{std::numeric_limits<unsigned int>::max()};
 } // namespace recs
 
 template<>

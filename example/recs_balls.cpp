@@ -123,37 +123,33 @@ namespace balls
 	}
 
 	// Default group is Update. Every Spawn system is already ahead of us.
-	[[= recs::system{}]] const Position& integrate(
-		Position& out_position,
-		const Position& in_position,
+	// In-place update: void return, Position& is an accepted write.
+	[[= recs::system{}]] void integrate(
+		Position& io_position,
 		const Velocity& in_velocity,
 		const Time& in_time
 	)
 	{
-		out_position.m_x = in_position.m_x + in_velocity.m_x * in_time.m_delta;
-		out_position.m_y = in_position.m_y + in_velocity.m_y * in_time.m_delta;
-		return out_position;
+		io_position.m_x += in_velocity.m_x * in_time.m_delta;
+		io_position.m_y += in_velocity.m_y * in_time.m_delta;
 	}
 
-	[[ = recs::system{}, = recs::after{^^integrate} ]] const Velocity& bounce(
-		Velocity& out_velocity,
-		const Velocity& in_velocity,
+	[[ = recs::system{}, = recs::after{^^integrate} ]] void bounce(
+		Velocity& io_velocity,
 		const Position& in_position,
 		const Window& in_window
 	)
 	{
-		out_velocity = in_velocity;
-		if ((in_position.m_x < 0.0f && in_velocity.m_x < 0.0f) ||
-			(in_position.m_x > in_window.m_width && in_velocity.m_x > 0.0f))
+		if ((in_position.m_x < 0.0f && io_velocity.m_x < 0.0f) ||
+			(in_position.m_x > in_window.m_width && io_velocity.m_x > 0.0f))
 		{
-			out_velocity.m_x = -in_velocity.m_x;
+			io_velocity.m_x = -io_velocity.m_x;
 		}
-		if ((in_position.m_y < 0.0f && in_velocity.m_y < 0.0f) ||
-			(in_position.m_y > in_window.m_height && in_velocity.m_y > 0.0f))
+		if ((in_position.m_y < 0.0f && io_velocity.m_y < 0.0f) ||
+			(in_position.m_y > in_window.m_height && io_velocity.m_y > 0.0f))
 		{
-			out_velocity.m_y = -in_velocity.m_y;
+			io_velocity.m_y = -io_velocity.m_y;
 		}
-		return out_velocity;
 	}
 
 	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(
