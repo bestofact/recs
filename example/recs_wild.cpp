@@ -366,9 +366,8 @@ namespace demo
 	// pushing a child position into BirthQueue. integrate_animal's Before{}
 	// pins this pair so they don't cycle on Energy (plants never run the
 	// integrator, but the schedule analyzer can't see that).
-	[[= recs::system{}]] const Energy& plant_metabolize(
+	[[= recs::system{}]] void plant_metabolize(
 		Energy& out_energy,
-		const Energy& in_energy,
 		const Species::Plant&,
 		const Position& in_position,
 		const Balance& in_balance,
@@ -377,10 +376,11 @@ namespace demo
 		const recs::index in_index
 	)
 	{
+		// In-place update: the accepted write is also the previous value.
+		const Energy& in_energy = out_energy;
 		if (in_time.m_paused)
 		{
-			out_energy.m_value = in_energy.m_value;
-			return out_energy;
+			return;
 		}
 
 		float energy = in_energy.m_value + in_balance.m_plant_growth * in_time.m_delta;
@@ -405,15 +405,13 @@ namespace demo
 		}
 
 		out_energy.m_value = energy;
-		return out_energy;
 	}
 
 	// Seek nearest plant + flee predators + pointer scare, lerp toward the
 	// resulting desired velocity. Reads SpatialGrid for neighbours.
-	[[= recs::system{}]] const Velocity&
+	[[= recs::system{}]] void
 		herbivore_drive(
 			Velocity& out_velocity,
-			const Velocity& in_velocity,
 			const Position& in_position,
 			const Species::Herbivore&,
 			const SpatialGrid& in_grid,
@@ -423,10 +421,10 @@ namespace demo
 			const Time& in_time
 		)
 	{
+		const Velocity& in_velocity = out_velocity;
 		if (in_time.m_paused)
 		{
-			out_velocity = in_velocity;
-			return out_velocity;
+			return;
 		}
 
 		const int cell = cell_of(in_grid, in_position.m_x, in_position.m_y);
@@ -537,13 +535,11 @@ namespace demo
 		const float k = t > 1.0f ? 1.0f : t;
 		out_velocity.m_x = in_velocity.m_x + (dvx - in_velocity.m_x) * k;
 		out_velocity.m_y = in_velocity.m_y + (dvy - in_velocity.m_y) * k;
-		return out_velocity;
 	}
 
-	[[= recs::system{}]] const Velocity&
+	[[= recs::system{}]] void
 		predator_drive(
 			Velocity& out_velocity,
-			const Velocity& in_velocity,
 			const Position& in_position,
 			const Species::Predator&,
 			const SpatialGrid& in_grid,
@@ -552,10 +548,10 @@ namespace demo
 			const Time& in_time
 		)
 	{
+		const Velocity& in_velocity = out_velocity;
 		if (in_time.m_paused)
 		{
-			out_velocity = in_velocity;
-			return out_velocity;
+			return;
 		}
 
 		const int cell = cell_of(in_grid, in_position.m_x, in_position.m_y);
@@ -640,7 +636,6 @@ namespace demo
 		const float k = t > 1.0f ? 1.0f : t;
 		out_velocity.m_x = in_velocity.m_x + (dvx - in_velocity.m_x) * k;
 		out_velocity.m_y = in_velocity.m_y + (dvy - in_velocity.m_y) * k;
-		return out_velocity;
 	}
 
 	// One integrator for both species — Velocity is the discriminator (plants
@@ -654,20 +649,19 @@ namespace demo
 		= recs::after{^^herbivore_drive},
 		= recs::after{^^predator_drive},
 		= recs::before{^^plant_metabolize}
-	]] const Position&
+	]] void
 		integrate_animal(
 			Position& out_position,
-			const Position& in_position,
 			const Velocity& in_velocity,
 			const Energy&,
 			const Window& in_window,
 			const Time& in_time
 		)
 	{
+		const Position& in_position = out_position;
 		if (in_time.m_paused)
 		{
-			out_position = in_position;
-			return out_position;
+			return;
 		}
 
 		float x = in_position.m_x + in_velocity.m_x * in_time.m_delta;
@@ -693,17 +687,15 @@ namespace demo
 
 		out_position.m_x = x;
 		out_position.m_y = y;
-		return out_position;
 	}
 
 	// One plant per frame: there are no transactions in the engine, so atomic
 	// eat emerges from the eater consuming at most a single victim per tick.
 	// After{integrate_animal} pins eat downstream of the position step —
 	// they cycle through Position/Energy otherwise.
-	[[ = recs::system{}, = recs::after{^^integrate_animal} ]] const Energy&
+	[[ = recs::system{}, = recs::after{^^integrate_animal} ]] void
 		herbivore_eat(
 			Energy& out_energy,
-			const Energy& in_energy,
 			const Position& in_position,
 			const Velocity& in_velocity,
 			const Species::Herbivore&,
@@ -714,10 +706,10 @@ namespace demo
 			const Time& in_time
 		)
 	{
+		const Energy& in_energy = out_energy;
 		if (in_time.m_paused)
 		{
-			out_energy = in_energy;
-			return out_energy;
+			return;
 		}
 
 		const int cell = cell_of(in_grid, in_position.m_x, in_position.m_y);
@@ -769,13 +761,11 @@ namespace demo
 		}
 
 		out_energy.m_value = energy;
-		return out_energy;
 	}
 
-	[[ = recs::system{}, = recs::after{^^integrate_animal} ]] const Energy&
+	[[ = recs::system{}, = recs::after{^^integrate_animal} ]] void
 		predator_eat(
 			Energy& out_energy,
-			const Energy& in_energy,
 			const Position& in_position,
 			const Velocity& in_velocity,
 			const Species::Predator&,
@@ -786,10 +776,10 @@ namespace demo
 			const Time& in_time
 		)
 	{
+		const Energy& in_energy = out_energy;
 		if (in_time.m_paused)
 		{
-			out_energy = in_energy;
-			return out_energy;
+			return;
 		}
 
 		const int cell = cell_of(in_grid, in_position.m_x, in_position.m_y);
@@ -841,16 +831,14 @@ namespace demo
 		}
 
 		out_energy.m_value = energy;
-		return out_energy;
 	}
 
 	[[
 		= recs::system{},
 		= recs::after{^^integrate_animal},
 		= recs::after{^^herbivore_eat}
-	]] const Energy& herbivore_metabolize(
+	]] void herbivore_metabolize(
 		Energy& out_energy,
-		const Energy& in_energy,
 		const Velocity& in_velocity,
 		const Species::Herbivore&,
 		const Balance& in_balance,
@@ -859,22 +847,19 @@ namespace demo
 	{
 		if (in_time.m_paused)
 		{
-			out_energy = in_energy;
-			return out_energy;
+			return;
 		}
 		const float speed = std::sqrt(in_velocity.m_x * in_velocity.m_x + in_velocity.m_y * in_velocity.m_y);
 		const float drain = in_balance.m_herb_metabolism + in_balance.m_herb_motion_cost * speed;
-		out_energy.m_value = in_energy.m_value - drain * in_time.m_delta;
-		return out_energy;
+		out_energy.m_value -= drain * in_time.m_delta;
 	}
 
 	[[
 		= recs::system{},
 		= recs::after{^^integrate_animal},
 		= recs::after{^^predator_eat}
-	]] const Energy& predator_metabolize(
+	]] void predator_metabolize(
 		Energy& out_energy,
-		const Energy& in_energy,
 		const Velocity& in_velocity,
 		const Species::Predator&,
 		const Balance& in_balance,
@@ -883,13 +868,11 @@ namespace demo
 	{
 		if (in_time.m_paused)
 		{
-			out_energy = in_energy;
-			return out_energy;
+			return;
 		}
 		const float speed = std::sqrt(in_velocity.m_x * in_velocity.m_x + in_velocity.m_y * in_velocity.m_y);
 		const float drain = in_balance.m_pred_metabolism + in_balance.m_pred_motion_cost * speed;
-		out_energy.m_value = in_energy.m_value - drain * in_time.m_delta;
-		return out_energy;
+		out_energy.m_value -= drain * in_time.m_delta;
 	}
 
 	// Mark Dying after eat + metabolize so both starvation and eaten-flag are

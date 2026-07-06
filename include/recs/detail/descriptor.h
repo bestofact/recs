@@ -210,6 +210,7 @@ namespace recs
 			std::meta::info m_group;
 			std::meta::info m_return_type;
 			std::meta::info m_modified_type;
+			size_t m_injected_type_count = 0;
 			std::span<const std::meta::info> m_parameters;
 			std::span<const std::meta::info> m_parameter_types;
 
@@ -240,7 +241,11 @@ namespace recs
 											: k_system.group;
 
 			constexpr std::meta::info k_return_type = std::meta::return_type_of(Info);
-			constexpr std::meta::info k_modified_type = recs::meta::strip_type(k_return_type);
+			// bool returns make no structural change (false only stops the iteration),
+			// so they are modelled as a void modified type.
+			constexpr std::meta::info k_modified_type = std::meta::dealias(k_return_type) == ^^bool
+														  ? ^^void
+														  : recs::meta::strip_type(k_return_type);
 
 			const auto parameters = std::meta::parameters_of(Info);
 			const auto parameter_count = parameters.size();
@@ -291,6 +296,35 @@ namespace recs
 				}
 			}
 
+			// Structural returns imply filters and writes beyond the parameter list:
+			// - T&& (unconditional reset) runs only on entities that have T, so T is
+			//   enforced as an accept type. The removal is a structural write on T, so
+			//   T also joins the write set even without a T& parameter; the scheduler
+			//   needs the write edge for read/reject-after-write inference.
+			// - const T& (unconditional set) runs only on entities that lack T, so T
+			//   is enforced as a reject type.
+			size_t injected_type_count = 0;
+			if (recs::meta::is_mutable_rvalue_reference(k_return_type))
+			{
+				if (std::ranges::find(write_types, k_modified_type) == write_types.end())
+				{
+					write_types.push_back(k_modified_type);
+					++injected_type_count;
+				}
+				if (std::ranges::find(accept_types, k_modified_type) == accept_types.end())
+				{
+					accept_types.push_back(k_modified_type);
+				}
+			}
+			if (recs::meta::is_const_lvalue_reference(k_return_type))
+			{
+				if (std::ranges::find(reject_types, k_modified_type) == reject_types.end())
+				{
+					reject_types.push_back(k_modified_type);
+					++injected_type_count;
+				}
+			}
+
 			const auto after_annotations = std::meta::annotations_of(Info, recs::meta::k_after);
 			const auto before_annotations = std::meta::annotations_of(Info, recs::meta::k_before);
 
@@ -323,6 +357,7 @@ namespace recs
 				.m_group = group,
 				.m_return_type = k_return_type,
 				.m_modified_type = k_modified_type,
+				.m_injected_type_count = injected_type_count,
 				.m_parameters = std::define_static_array(parameters),
 				.m_parameter_types = std::define_static_array(parameter_types),
 				.m_types = std::define_static_array(types),
@@ -371,7 +406,9 @@ namespace recs
 			constexpr auto k_return_type = k_metadata.m_return_type;
 			recs::meta::ensure(
 				std::meta::is_void_type(k_return_type) ||
+					std::meta::dealias(k_return_type) == ^^bool ||
 					recs::meta::is_const_lvalue_reference(k_return_type) ||
+					recs::meta::is_mutable_rvalue_reference(k_return_type) ||
 					recs::meta::is_pointer_to_const(k_return_type) ||
 					recs::meta::is_pointer_to_mutable(k_return_type),
 				"({}) is not a valid return type for system ({}).",
@@ -384,7 +421,7 @@ namespace recs
 			recs::meta::ensure(
 				std::meta::is_void_type(k_modified_type) ||
 					recs::Descriptor<k_modified_type>::k_kind == recs::meta::k_component,
-				"({}) is not a valid mofidied type for system ({})",
+				"({}) is not a valid modified type for system ({})",
 				k_modified_type,
 				Info
 			);
@@ -412,13 +449,47 @@ namespace recs
 				}
 			}
 
-			// Ensure we filter at least one component.
+			// Systems that filter no components are allowed and run once per tick,
+			// but pointer returns decide set/reset per entity and therefore still
+			// need a filter to name the entities they run on.
 			constexpr auto k_accept_types = k_metadata.m_accept_types;
 			constexpr auto k_reject_types = k_metadata.m_reject_types;
+			constexpr bool k_filters_components = !k_accept_types.empty() || !k_reject_types.empty();
 			recs::meta::ensure(
-				!k_accept_types.empty() || !k_reject_types.empty(),
+				!(recs::meta::is_pointer_to_const(k_return_type) || recs::meta::is_pointer_to_mutable(k_return_type)) ||
+					k_filters_components,
 				"({}) should filter at least one component.",
 				Info
+			);
+
+			// A system without a component filter runs once per tick, not per entity,
+			// so per-entity utility parameters are meaningless for it.
+			recs::meta::ensure(
+				k_filters_components || utility_parameter_count == 0,
+				"({}) queries no components and runs once per tick, so it cannot take recs::index, recs::cursor or recs::count.",
+				Info
+			);
+
+			// An unconditional set runs only on entities that lack the modified type,
+			// so reading it is a contradiction. Writing through T& stays allowed: it
+			// is the out-slot for the component's data.
+			constexpr auto k_ensure_read_types = k_metadata.m_read_types;
+			recs::meta::ensure(
+				!recs::meta::is_const_lvalue_reference(k_return_type) ||
+					std::ranges::find(k_ensure_read_types, k_modified_type) == k_ensure_read_types.end(),
+				"({}) unconditionally sets ({}) and runs only on entities without it, so it cannot take it as const T&.",
+				Info,
+				k_modified_type
+			);
+
+			// An unconditional reset runs only on entities that have the modified
+			// type, so rejecting it is a contradiction.
+			recs::meta::ensure(
+				!recs::meta::is_mutable_rvalue_reference(k_return_type) ||
+					std::ranges::find(k_reject_types, k_modified_type) == k_reject_types.end(),
+				"({}) unconditionally resets ({}) and runs only on entities that have it, so it cannot take it as T&&.",
+				Info,
+				k_modified_type
 			);
 
 			// Ensure we are writing to modified type, if we are modifying a type.
@@ -426,7 +497,7 @@ namespace recs
 			recs::meta::ensure(
 				std::meta::is_void_type(k_modified_type) ||
 					std::ranges::find(k_write_types, k_modified_type) != k_write_types.end(),
-				"({}) should be writted in system ({})",
+				"({}) should be written in system ({})",
 				k_modified_type,
 				Info
 			);
@@ -462,9 +533,12 @@ namespace recs
 			// Ensure write types are not has duplicate types.
 			recs::meta::ensure(!has_duplicates(k_write_types), "({}) has duplicated write types.", Info);
 
-			// Ensure the read-write-reject sizes (+ possible index) matches with types size.
+			// Ensure the read-write-reject sizes (+ possible utility parameters) match the
+			// parameter count. Types injected by structural returns (the write of a T&&
+			// reset, the reject of a const T& set) are not parameters, so they are added
+			// to the left-hand side.
 			recs::meta::ensure(
-				k_types.size() ==
+				k_types.size() + k_metadata.m_injected_type_count ==
 					(k_read_types.size() + k_write_types.size() + k_reject_types.size() + utility_parameter_count),
 				"({}) has mismatch type counts.",
 				Info

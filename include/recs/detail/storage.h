@@ -49,7 +49,7 @@ namespace recs
 		}
 
 	public:
-		std::array<typename[:Info:], SchemaDescriptor::k_metadata.m_entity_capacity> m_data;
+		std::array<typename[:Info:], SchemaDescriptor::k_metadata.m_entity_capacity> m_data{};
 	};
 
 	// Singleton storage: one instance per scene. Used for resources and for
@@ -77,7 +77,7 @@ namespace recs
 		}
 
 	public:
-		[:Info:] m_data;
+		[:Info:] m_data{};
 	};
 
 	// Scene-level storage: synthesises an aggregate whose members are the
@@ -209,6 +209,6 @@ namespace recs
 		}
 
 	private:
-		Data m_data;
+		Data m_data{};
 	};
 } // namespace recs

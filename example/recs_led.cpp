@@ -347,10 +347,10 @@ namespace demo
 
 	// Damped spring toward Target + curl-noise turbulence (the assembly).
 	// Default group is Update — every Spawn system is already in front of us.
-	[[= recs::system{}]] const Velocity&
+	// In-place update: void return, Velocity& is an accepted write.
+	[[= recs::system{}]] void
 		seek_target(
-			Velocity& out_velocity,
-			const Velocity& in_velocity,
+			Velocity& io_velocity,
 			const Position& in_position,
 			const Target& in_target,
 			const Field& in_field,
@@ -368,32 +368,29 @@ namespace demo
 		);
 
 		const float ax = (in_target.m_x - in_position.m_x) * in_field.m_stiffness +
-			tx * in_field.m_turbulence - in_velocity.m_x * in_field.m_damping;
+			tx * in_field.m_turbulence - io_velocity.m_x * in_field.m_damping;
 		const float ay = (in_target.m_y - in_position.m_y) * in_field.m_stiffness +
-			ty * in_field.m_turbulence - in_velocity.m_y * in_field.m_damping;
+			ty * in_field.m_turbulence - io_velocity.m_y * in_field.m_damping;
 
-		out_velocity.m_x = in_velocity.m_x + ax * in_time.m_delta;
-		out_velocity.m_y = in_velocity.m_y + ay * in_time.m_delta;
-		return out_velocity;
+		io_velocity.m_x += ax * in_time.m_delta;
+		io_velocity.m_y += ay * in_time.m_delta;
 	}
 
 	// Inverse-square impulse from the cursor (smear / clump). Both this and
 	// seek_target write Velocity while reading the other's output — recs can't
 	// pick a side from the read/write graph, so After{seek_target} names the
 	// order we want.
-	[[ = recs::system{}, = recs::after{^^seek_target} ]] const Velocity&
+	[[ = recs::system{}, = recs::after{^^seek_target} ]] void
 		pointer_force(
-			Velocity& out_velocity,
-			const Velocity& in_velocity,
+			Velocity& io_velocity,
 			const Position& in_position,
 			const Pointer& in_pointer,
 			const Time& in_time
 		)
 	{
-		// out and in_velocity alias the same slot — early-out leaves it untouched.
 		if (!in_pointer.m_active)
 		{
-			return out_velocity;
+			return;
 		}
 
 		const float dx = in_pointer.m_x - in_position.m_x;
@@ -404,9 +401,8 @@ namespace demo
 		const float falloff = (in_pointer.m_radius * in_pointer.m_radius) / dist2;
 		const float impulse = in_pointer.m_strength * in_pointer.m_mode * falloff * in_time.m_delta;
 
-		out_velocity.m_x += dx * inv_dist * impulse;
-		out_velocity.m_y += dy * inv_dist * impulse;
-		return out_velocity;
+		io_velocity.m_x += dx * inv_dist * impulse;
+		io_velocity.m_y += dy * inv_dist * impulse;
 	}
 
 	// Same cycle situation: integrate reads Velocity that seek_target and
@@ -416,12 +412,11 @@ namespace demo
 		= recs::system{},
 		= recs::after{^^seek_target},
 		= recs::after{^^pointer_force}
-	]] const Position&
-		integrate(Position& out_position, const Position& in_position, const Velocity& in_velocity, const Time& in_time)
+	]] void
+		integrate(Position& io_position, const Velocity& in_velocity, const Time& in_time)
 	{
-		out_position.m_x = in_position.m_x + in_velocity.m_x * in_time.m_delta;
-		out_position.m_y = in_position.m_y + in_velocity.m_y * in_time.m_delta;
-		return out_position;
+		io_position.m_x += in_velocity.m_x * in_time.m_delta;
+		io_position.m_y += in_velocity.m_y * in_time.m_delta;
 	}
 
 	[[= recs::system{^^Group::RenderInit}]] void clear_render_context(

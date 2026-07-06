@@ -8,189 +8,13 @@
 #include <algorithm>
 #include <meta>
 #include <span>
+#include <vector>
 
 namespace recs
 {
 	template<std::meta::info Info>
 	class Schedule final
 	{
-	};
-
-	template<std::meta::info Info>
-	requires(recs::Descriptor<Info>::k_kind == recs::meta::k_system)
-	class Schedule<Info> final
-	{
-	private:
-		using SystemDescriptor = recs::Descriptor<Info>;
-		using SchemaDescriptor = recs::Descriptor<SystemDescriptor::k_schema>;
-
-	private:
-		template<std::meta::info ComponentInfo>
-		requires (recs::Descriptor<ComponentInfo>::k_kind == recs::meta::k_component)
-		static consteval bool contains_descendant_of(const std::span<const std::meta::info> in_types)
-		{
-			if(std::ranges::find(in_types, ComponentInfo) != in_types.end())
-			{
-				return true;
-			}
-			constexpr auto k_child_components = recs::Descriptor<ComponentInfo>::k_metadata.m_child_components;
-			template for(constexpr std::meta::info k_child_component : k_child_components)
-			{
-				if(contains_descendant_of<k_child_component>(in_types))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		template<std::meta::info ComponentInfo>
-		requires (recs::Descriptor<ComponentInfo>::k_kind == recs::meta::k_component)
-		static consteval bool contains_sibling_of(const std::span<const std::meta::info> in_types)
-		{
-			constexpr auto k_sibling_components = recs::Descriptor<ComponentInfo>::k_metadata.m_sibling_components;
-			template for(constexpr std::meta::info k_sibling_component : k_sibling_components)
-			{
-				if(contains_descendant_of<k_sibling_component>(in_types))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		template<std::meta::info SystemInfo>
-		requires(recs::Descriptor<SystemInfo>::k_kind == recs::meta::k_system)
-		static consteval bool is_depends_on()
-		{
-			constexpr std::meta::info k_actuator = SystemInfo;
-			constexpr std::meta::info k_observer = Info;
-
-			// Cannot depend on self.
-			if constexpr (k_actuator == k_observer)
-			{
-				return false;
-			}
-
-			using ActuatorDescriptor = recs::Descriptor<k_actuator>;
-			using ObserverDescriptor = recs::Descriptor<k_observer>;
-
-			// If they are not at the same group, group dependency is more prior.
-			constexpr std::meta::info k_actuator_group = ActuatorDescriptor::k_metadata.m_group;
-			constexpr std::meta::info k_observer_group = ObserverDescriptor::k_metadata.m_group;
-			if constexpr (k_actuator_group != k_observer_group)
-			{
-				return static_cast<size_t>([:k_actuator_group:]) < static_cast<size_t>([:k_observer_group:]);
-			}
-
-			// Manual After/Before annotations take precedence over auto-inferred edges.
-			if constexpr (std::ranges::contains(ActuatorDescriptor::k_metadata.m_runs_after, k_observer))
-			{
-				return false;
-			}
-			if constexpr (std::ranges::contains(ActuatorDescriptor::k_metadata.m_runs_before, k_observer))
-			{
-				return true;
-			}
-			if constexpr (std::ranges::contains(ObserverDescriptor::k_metadata.m_runs_after, k_actuator))
-			{
-				return true;
-			}
-			if constexpr (std::ranges::contains(ObserverDescriptor::k_metadata.m_runs_before, k_actuator))
-			{
-				return false;
-			}
-
-			// Check dependency via read-write access.
-			constexpr auto k_observer_reads = ObserverDescriptor::k_metadata.m_read_types;
-			constexpr auto k_observer_accepts = ObserverDescriptor::k_metadata.m_accept_types;
-			constexpr auto k_observer_rejects = ObserverDescriptor::k_metadata.m_reject_types;
-			
-			constexpr auto k_actuator_writes = ActuatorDescriptor::k_metadata.m_write_types;
-			constexpr auto k_actuator_accepts = ActuatorDescriptor::k_metadata.m_accept_types;
-			constexpr auto k_actuator_rejects = ActuatorDescriptor::k_metadata.m_reject_types;
-
-			// First resolve conditions where two systems has no dependency by their nature.
-			// If one system reads a type where other reads a sibling of that type, they cannot have any dependency.
-			template for(constexpr std::meta::info k_observer_accept : k_observer_accepts)
-			{
-				if(contains_sibling_of<k_observer_accept>(k_actuator_accepts))
-				{
-					return false;
-				}
-			}
-			// Same above from actuator perspective.
-			template for(constexpr std::meta::info k_actuator_accept : k_actuator_accepts)
-			{
-				if(contains_sibling_of<k_actuator_accept>(k_observer_accepts))
-				{
-					return false;
-				}
-			}
-
-			// Second, If one system reject something other accepts that actuator doesn't writes, they cannot operate on same entity. 
-			for(const std::meta::info observer_reject : k_observer_rejects)
-			{
-				for(const std::meta::info actuator_accept : k_actuator_accepts)
-				{
-					if(observer_reject == actuator_accept && std::ranges::find(k_actuator_writes, observer_reject) == k_actuator_writes.end())
-					{
-						return false;
-					}
-				}
-			}
-			// Same as above, from actuator reject perspective.
-			for(const std::meta::info observer_accept : k_observer_accepts)
-			{
-				for(const std::meta::info actuator_reject : k_actuator_rejects)
-				{
-					if(observer_accept == actuator_reject && std::ranges::find(k_actuator_writes, observer_accept) == k_actuator_writes.end())
-					{
-						return false;
-					}
-				}
-			}
-
-			// Laslty if observer reads something actuator writes, it's a dependency.
-			if constexpr (std::ranges::find_first_of(k_observer_reads, k_actuator_writes) != k_observer_reads.end())
-			{
-				return true;
-			}
-			// If observer rejects something actuator writes, it's a dependency.
-			if constexpr (std::ranges::find_first_of(k_observer_rejects, k_actuator_writes) != k_observer_rejects.end())
-			{
-				return true;
-			}
-
-			return false;
-		}
-
-	private:
-		struct Metadata final
-		{
-			std::span<const std::meta::info> m_dependencies;
-		};
-
-		static consteval Metadata make_metadata()
-		{
-			constexpr std::span<const std::meta::info> k_systems = SchemaDescriptor::k_metadata.m_systems;
-			constexpr size_t k_system_count = k_systems.size();
-
-			std::vector<std::meta::info> dependencies;
-			dependencies.reserve(k_system_count);
-			template for (constexpr std::meta::info k_system : k_systems)
-			{
-				if constexpr (is_depends_on<k_system>())
-				{
-					dependencies.push_back(k_system);
-				}
-			}
-
-			return Metadata{.m_dependencies = std::define_static_array(dependencies)};
-		}
-
-	public:
-		static constexpr Metadata k_metadata = make_metadata();
 	};
 
 	template<std::meta::info Info>
@@ -208,6 +32,239 @@ namespace recs
 		};
 
 	private:
+		// Per-system access sets, gathered once (one template-for over the
+		// systems) so the pair analysis below can run as plain consteval loops
+		// without instantiating templates per pair.
+		struct SystemData final
+		{
+			std::meta::info m_system = recs::meta::k_invalid_info;
+			size_t m_group_rank = 0;
+			std::span<const std::meta::info> m_read_types;
+			std::span<const std::meta::info> m_write_types;
+			std::span<const std::meta::info> m_accept_types;
+			std::span<const std::meta::info> m_reject_types;
+			std::span<const std::meta::info> m_runs_after;
+			std::span<const std::meta::info> m_runs_before;
+		};
+
+		// Component hierarchy rows, gathered once for the sibling-disjoint rule.
+		struct ComponentData final
+		{
+			std::meta::info m_component = recs::meta::k_invalid_info;
+			std::span<const std::meta::info> m_child_components;
+			std::span<const std::meta::info> m_sibling_components;
+		};
+
+		static consteval std::vector<SystemData> collect_system_data()
+		{
+			constexpr std::span<const std::meta::info> k_systems = SchemaDescriptor::k_metadata.m_systems;
+
+			std::vector<SystemData> result;
+			result.reserve(k_systems.size());
+
+			template for (constexpr std::meta::info k_system : k_systems)
+			{
+				using SystemDescriptor = recs::Descriptor<k_system>;
+				constexpr std::meta::info k_group = SystemDescriptor::k_metadata.m_group;
+
+				size_t group_rank = 0;
+				if constexpr (k_group != recs::meta::k_invalid_info)
+				{
+					group_rank = static_cast<size_t>([:k_group:]);
+				}
+
+				result.push_back(SystemData{
+					.m_system = k_system,
+					.m_group_rank = group_rank,
+					.m_read_types = SystemDescriptor::k_metadata.m_read_types,
+					.m_write_types = SystemDescriptor::k_metadata.m_write_types,
+					.m_accept_types = SystemDescriptor::k_metadata.m_accept_types,
+					.m_reject_types = SystemDescriptor::k_metadata.m_reject_types,
+					.m_runs_after = SystemDescriptor::k_metadata.m_runs_after,
+					.m_runs_before = SystemDescriptor::k_metadata.m_runs_before
+				});
+			}
+
+			return result;
+		}
+
+		static consteval std::vector<ComponentData> collect_component_data()
+		{
+			constexpr std::span<const std::meta::info> k_components = SchemaDescriptor::k_metadata.m_components;
+
+			std::vector<ComponentData> result;
+			result.reserve(k_components.size());
+
+			template for (constexpr std::meta::info k_component : k_components)
+			{
+				using ComponentDescriptor = recs::Descriptor<k_component>;
+				result.push_back(ComponentData{
+					.m_component = k_component,
+					.m_child_components = ComponentDescriptor::k_metadata.m_child_components,
+					.m_sibling_components = ComponentDescriptor::k_metadata.m_sibling_components
+				});
+			}
+
+			return result;
+		}
+
+		static consteval const ComponentData* find_component_data(
+			const std::span<const ComponentData> in_components,
+			const std::meta::info in_component
+		)
+		{
+			for (const ComponentData& component : in_components)
+			{
+				if (component.m_component == in_component)
+				{
+					return &component;
+				}
+			}
+			return nullptr;
+		}
+
+		// True when in_types contains in_component or any of its descendants.
+		static consteval bool contains_descendant_of(
+			const std::span<const ComponentData> in_components,
+			const std::meta::info in_component,
+			const std::span<const std::meta::info> in_types
+		)
+		{
+			if (std::ranges::contains(in_types, in_component))
+			{
+				return true;
+			}
+
+			const ComponentData* const data = find_component_data(in_components, in_component);
+			if (data == nullptr)
+			{
+				return false;
+			}
+
+			for (const std::meta::info child_component : data->m_child_components)
+			{
+				if (contains_descendant_of(in_components, child_component, in_types))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		// True when in_types contains a sibling of in_component (or a descendant of one).
+		static consteval bool contains_sibling_of(
+			const std::span<const ComponentData> in_components,
+			const std::meta::info in_component,
+			const std::span<const std::meta::info> in_types
+		)
+		{
+			const ComponentData* const data = find_component_data(in_components, in_component);
+			if (data == nullptr)
+			{
+				return false;
+			}
+
+			for (const std::meta::info sibling_component : data->m_sibling_components)
+			{
+				if (contains_descendant_of(in_components, sibling_component, in_types))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		// Classify one pair: true when the observer depends on the actuator.
+		// The rules and their order match the README's schedule classifier.
+		static consteval bool is_depends_on(
+			const std::span<const ComponentData> in_components,
+			const SystemData& in_observer,
+			const SystemData& in_actuator
+		)
+		{
+			// Cannot depend on self.
+			if (in_observer.m_system == in_actuator.m_system)
+			{
+				return false;
+			}
+
+			// If they are not in the same group, group order decides.
+			if (in_observer.m_group_rank != in_actuator.m_group_rank)
+			{
+				return in_actuator.m_group_rank < in_observer.m_group_rank;
+			}
+
+			// Manual After/Before annotations take precedence over auto-inferred edges.
+			if (std::ranges::contains(in_actuator.m_runs_after, in_observer.m_system))
+			{
+				return false;
+			}
+			if (std::ranges::contains(in_actuator.m_runs_before, in_observer.m_system))
+			{
+				return true;
+			}
+			if (std::ranges::contains(in_observer.m_runs_after, in_actuator.m_system))
+			{
+				return true;
+			}
+			if (std::ranges::contains(in_observer.m_runs_before, in_actuator.m_system))
+			{
+				return false;
+			}
+
+			// If one system filters on a sibling of what the other filters on, the
+			// two cannot share an entity: no dependency.
+			for (const std::meta::info observer_accept : in_observer.m_accept_types)
+			{
+				if (contains_sibling_of(in_components, observer_accept, in_actuator.m_accept_types))
+				{
+					return false;
+				}
+			}
+			for (const std::meta::info actuator_accept : in_actuator.m_accept_types)
+			{
+				if (contains_sibling_of(in_components, actuator_accept, in_observer.m_accept_types))
+				{
+					return false;
+				}
+			}
+
+			// If one system rejects something the other accepts and the actuator
+			// doesn't write it, they cannot operate on the same entity.
+			for (const std::meta::info observer_reject : in_observer.m_reject_types)
+			{
+				if (std::ranges::contains(in_actuator.m_accept_types, observer_reject) &&
+					!std::ranges::contains(in_actuator.m_write_types, observer_reject))
+				{
+					return false;
+				}
+			}
+			for (const std::meta::info observer_accept : in_observer.m_accept_types)
+			{
+				if (std::ranges::contains(in_actuator.m_reject_types, observer_accept) &&
+					!std::ranges::contains(in_actuator.m_write_types, observer_accept))
+				{
+					return false;
+				}
+			}
+
+			// If the observer reads something the actuator writes, it's a dependency.
+			if (std::ranges::find_first_of(in_observer.m_read_types, in_actuator.m_write_types) !=
+				in_observer.m_read_types.end())
+			{
+				return true;
+			}
+			// If the observer rejects something the actuator writes, it's a dependency.
+			if (std::ranges::find_first_of(in_observer.m_reject_types, in_actuator.m_write_types) !=
+				in_observer.m_reject_types.end())
+			{
+				return true;
+			}
+
+			return false;
+		}
+
+	private:
 		struct Metadata final
 		{
 			std::span<const Stage> m_stages;
@@ -216,8 +273,23 @@ namespace recs
 
 		static consteval Metadata make_metadata()
 		{
-			constexpr std::span<const std::meta::info> k_systems = SchemaDescriptor::k_metadata.m_systems;
-			constexpr size_t k_system_count = k_systems.size();
+			const std::vector<SystemData> systems = collect_system_data();
+			const std::vector<ComponentData> components = collect_component_data();
+			const size_t system_count = systems.size();
+
+			// Dependency lists per system, computed with plain loops over the
+			// collected data - no per-pair template instantiation.
+			std::vector<std::vector<std::meta::info>> dependencies(system_count);
+			for (size_t observer = 0; observer < system_count; ++observer)
+			{
+				for (size_t actuator = 0; actuator < system_count; ++actuator)
+				{
+					if (is_depends_on(components, systems[observer], systems[actuator]))
+					{
+						dependencies[observer].push_back(systems[actuator].m_system);
+					}
+				}
+			}
 
 			struct Progress final
 			{
@@ -227,15 +299,15 @@ namespace recs
 			};
 
 			std::vector<Progress> progresses;
-			progresses.reserve(k_system_count);
-			size_t remaining_progress_count = k_system_count;
+			progresses.reserve(system_count);
+			size_t remaining_progress_count = system_count;
 
-			template for (constexpr std::meta::info k_system : k_systems)
+			for (size_t i = 0; i < system_count; ++i)
 			{
 				const Progress progress{
-					.m_system = k_system,
+					.m_system = systems[i].m_system,
 					.m_processed_dependencies = 0,
-					.m_dependencies = recs::Schedule<k_system>::k_metadata.m_dependencies
+					.m_dependencies = dependencies[i]
 				};
 				progresses.push_back(progress);
 			}
@@ -364,14 +436,14 @@ namespace recs
 			};
 
 			std::vector<std::meta::info> staged_systems;
-			staged_systems.reserve(k_system_count);
+			staged_systems.reserve(system_count);
 			size_t stage_index = 0;
 
 			std::vector<Stage> stages;
 			while (remaining_progress_count > 0)
 			{
-				const auto systems = find_systems_without_dependency();
-				if (systems.empty())
+				const auto systems_without_dependency = find_systems_without_dependency();
+				if (systems_without_dependency.empty())
 				{
 					recs::meta::ensure(
 						false,
@@ -382,15 +454,15 @@ namespace recs
 				}
 
 				const size_t begin = stage_index;
-				const size_t end = begin + systems.size();
+				const size_t end = begin + systems_without_dependency.size();
 				stage_index = end;
 
 				const Stage stage{.m_begin = begin, .m_end = end};
 				stages.push_back(stage);
 
-				staged_systems.append_range(systems);
+				staged_systems.append_range(systems_without_dependency);
 
-				erase_systems(systems);
+				erase_systems(systems_without_dependency);
 			}
 
 			return Metadata{
