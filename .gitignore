@@ -37,6 +37,7 @@ build/
 .xmake/
 .cache/
 .toolchains/
+.notes/
 /compile_commands.json
 .DS_Store
 
