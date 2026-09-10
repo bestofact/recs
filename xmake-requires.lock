@@ -6,7 +6,7 @@
         ["cmake >=3.11#f56260b5"] = {
             repo = {
                 branch = "master",
-                commit = "67bc9ac98b7aa6e1967ad44ed709fb3cc07d9835",
+                commit = "1f263b7576c730dfbc3d3dbf5a3d833ef0e4daae",
                 url = "https://gitlab.com/tboox/xmake-repo.git"
             },
             version = "4.2.3"
@@ -14,7 +14,7 @@
         ["ninja#f56260b5"] = {
             repo = {
                 branch = "master",
-                commit = "67bc9ac98b7aa6e1967ad44ed709fb3cc07d9835",
+                commit = "1f263b7576c730dfbc3d3dbf5a3d833ef0e4daae",
                 url = "https://gitlab.com/tboox/xmake-repo.git"
             },
             version = "v1.13.1"
@@ -22,7 +22,7 @@
         ["opengl#f56260b5"] = {
             repo = {
                 branch = "master",
-                commit = "67bc9ac98b7aa6e1967ad44ed709fb3cc07d9835",
+                commit = "1f263b7576c730dfbc3d3dbf5a3d833ef0e4daae",
                 url = "https://gitlab.com/tboox/xmake-repo.git"
             },
             version = "latest"
@@ -30,7 +30,7 @@
         ["raylib#f56260b5"] = {
             repo = {
                 branch = "master",
-                commit = "67bc9ac98b7aa6e1967ad44ed709fb3cc07d9835",
+                commit = "1f263b7576c730dfbc3d3dbf5a3d833ef0e4daae",
                 url = "https://gitlab.com/tboox/xmake-repo.git"
             },
             version = "6.0"
