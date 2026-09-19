@@ -4,11 +4,11 @@
 
 #include <meta>
 
-namespace recs::meta
+namespace recs::_private
 {
-	struct InvalidInfo
+	struct invalid_info_t 
 	{
 	};
 
-	static constexpr std::meta::info k_invalid_info = ^^recs::meta::InvalidInfo;
+	static constexpr std::meta::info k_invalid_info = ^^invalid_info_t;
 } // namespace recs::meta

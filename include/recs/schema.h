@@ -3,7 +3,7 @@
 #pragma once
 
 #include "recs/index.h"
-#include "recs/detail/invalid_info.h"
+#include "recs/private/invalid_info.h"
 
 #include <meta>
 
@@ -12,7 +12,7 @@ namespace recs
 	struct schema final
 	{
 		const recs::index entity_capacity;
-		const std::meta::info group_enum = recs::meta::k_invalid_info;
-		const std::meta::info default_group = recs::meta::k_invalid_info;
+		const std::meta::info group_enum = recs::_private::k_invalid_info;
+		const std::meta::info default_group = recs::_private::k_invalid_info;
 	};
 } // namespace recs

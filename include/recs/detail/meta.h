@@ -7,7 +7,7 @@
 #include "recs/component.h"
 #include "recs/count.h"
 #include "recs/cursor.h"
-#include "recs/detail/invalid_info.h"
+#include "recs/private/invalid_info.h"
 #include "recs/index.h"
 #include "recs/resource.h"
 #include "recs/schema.h"
@@ -101,6 +101,18 @@ namespace recs::meta
 	static constexpr std::meta::info k_resource = ^^recs::resource;
 	static constexpr std::meta::info k_schema = ^^recs::schema;
 	static constexpr std::meta::info k_system = ^^recs::system;
+
+	static constexpr std::span<const std::meta::info> k_kinds = std::define_static_array(
+		std::array{
+			k_index,
+			k_cursor,
+			k_count,
+			k_component,
+			k_resource,
+			k_system,
+			k_schema,
+		}
+	);
 
 	consteval std::string_view debug_string_of(const std::meta::info in_info)
 	{
