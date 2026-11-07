@@ -21,7 +21,8 @@ namespace recs::_private
 	struct manifest_t<kind_t::k_component>
 	{
 	public:
-		consteval manifest_t(const std::meta::info in_info);
+		consteval manifest_t() = default;
+		consteval explicit manifest_t(const std::meta::info in_info);
 
 	public:
 		std::meta::info m_info = k_invalid_info;
@@ -29,6 +30,7 @@ namespace recs::_private
 		std::meta::info m_parent = k_invalid_info;
 		structural_list_t<std::meta::info> m_siblings;
 		structural_list_t<std::meta::info> m_children;
+		structural_list_t<std::meta::info> m_divergents;
 
 		bool m_is_empty = false;
 		bool m_is_transient = false;
@@ -39,7 +41,7 @@ namespace recs::_private
 		m_info = in_info;
 
 		static constexpr auto ctx = std::meta::access_context::unchecked();
-		
+
 		// Resolve parent
 		{
 			const std::meta::info parent = std::meta::parent_of(in_info);
@@ -88,6 +90,28 @@ namespace recs::_private
 
 			m_children = std::define_static_array(children);
 		}
+
+		// Resolve divergents
+		{
+			std::vector<std::meta::info> divergents;
+
+			for (std::meta::info parent = m_parent; kind_t::get_kind(parent) == kind_t::k_component;
+				 parent = std::meta::parent_of(parent))
+			{
+				const auto children =
+					std::meta::members_of(m_parent, ctx) |
+					std::views::filter(
+						[&in_info](const std::meta::info in_elem)
+						{
+							return in_elem != in_info && kind_t::get_kind(in_elem) == kind_t::k_component;
+						}
+					) |
+					std::ranges::to<std::vector>();
+				divergents.append_range(children);
+			}
+
+			m_divergents = std::define_static_array(divergents);
+		}
 	}
 
 	// Manifest for system
@@ -96,12 +120,12 @@ namespace recs::_private
 	{
 	public:
 		consteval manifest_t() = default;
-		consteval manifest_t(const std::meta::info in_info);
+		consteval explicit manifest_t(const std::meta::info in_info);
 
 	public:
 		std::meta::info m_info = k_invalid_info;
+		kind_t::system_t m_kind = kind_t::system_t();
 
-		std::meta::info m_group = k_invalid_info;
 		structural_list_t<std::meta::info> m_observers;
 		structural_list_t<std::meta::info> m_providers;
 
@@ -126,10 +150,11 @@ namespace recs::_private
 		// Resolve group.
 		{
 			const std::meta::info system_annotation = std::meta::annotations_of(in_info, recs::meta::k_system)[0];
-			const auto value = std::meta::extract<typename[:recs::meta::k_system:]>(system_annotation);
-			m_group = value.group;
+			const auto value = std::meta::extract<typename[:kind_t::k_system:]>(system_annotation);
+			m_kind = value;
 		}
 
+		// TODO(anilt) : uses old after/before annotations. update them.
 		// Resolve observers.
 		{
 			const auto observers = std::meta::annotations_of(in_info, recs::meta::k_before) |
@@ -310,7 +335,8 @@ namespace recs::_private
 		}
 	}
 
+	// Utility invalid manifest.
 	template<std::meta::info Info>
-	requires(kind_c<Info>)
-	static constexpr manifest_t<Info> k_invalid_manifest = manifest_t<Info>(k_invalid_info);
+	requires kind_c<Info>
+	static inline constexpr manifest_t<Info> k_invalid_manifest = manifest_t<Info>();
 } // namespace recs::_private

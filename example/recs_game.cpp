@@ -8,11 +8,11 @@
 // Schema description
 namespace game
 {
-	static constexpr recs::index k_player_index = 0;
-	static constexpr recs::index k_npc_begin = 1;
-	static constexpr recs::index k_npc_end = 75'000;
-	static constexpr recs::index k_particle_begin = k_npc_end;
-	static constexpr recs::index k_entity_capacity = 100'000;
+	static constexpr recs::entity_t k_player_index = 0;
+	static constexpr recs::entity_t k_npc_begin = 1;
+	static constexpr recs::entity_t k_npc_end = 75'000;
+	static constexpr recs::entity_t k_particle_begin = k_npc_end;
+	static constexpr recs::entity_t k_entity_capacity = 100'000;
 
 	// Phases in execution order. The Render sub-phases keep particles
 	// behind characters and the HUD on top without any After / Before edges.
@@ -339,7 +339,7 @@ namespace game
 		Type&&,
 		MinionTimer& out_timer,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		if (in_index < k_npc_begin || in_index >= k_npc_end)
@@ -395,7 +395,7 @@ namespace game
 		Type&&,
 		BossTimer& out_timer,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		if (in_index < k_npc_begin || in_index >= k_npc_end)
@@ -454,7 +454,7 @@ namespace game
 		const Type::Character::NPC&,
 		const Window& in_window,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int seed = example::hash::u32(in_index * 2'654'435'761u + static_cast<unsigned int>(in_time.m_now * 999.0f));
@@ -717,7 +717,7 @@ namespace game
 		AttackRegistry& out_registry,
 		ParticleSpawnQueue& out_queue,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		out_registry.m_attacks.push_back(AttackRegistry::Data{
@@ -830,7 +830,7 @@ namespace game
 		PlayerStats& out_stats,
 		ParticleSpawnQueue& out_queue,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		out_stats.m_score += 10;
@@ -990,7 +990,7 @@ namespace game
 		PendingParticle&&,
 		Type&&,
 		ParticleSpawnQueue& out_queue,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		if (in_index < k_particle_begin || in_index >= k_entity_capacity)

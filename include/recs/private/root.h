@@ -1,8 +1,10 @@
 #pragma once
 #include "recs/private/invalid_info.h"
-#include "recs/private/structural_list.h"
 #include "recs/private/kind.h"
+#include "recs/private/structural_list.h"
 
+#include <algorithm>
+#include <map>
 #include <meta>
 #include <ranges>
 
@@ -18,6 +20,10 @@ namespace recs::_private
 		consteval root_t() = default;
 		consteval explicit root_t(const std::meta::info in_namespace);
 
+		template<std::meta::info Info>
+		requires(kind_c<Info>)
+		consteval structural_list_t<std::meta::info> view_items();
+
 	private:
 		consteval std::vector<std::meta::info> collect_items(const std::meta::info in_container);
 		consteval void try_push_back_container(
@@ -26,11 +32,15 @@ namespace recs::_private
 		);
 		consteval void try_push_back_item(std::vector<std::meta::info>& out_items, const std::meta::info in_info);
 		consteval std::meta::info find_schema(const structural_list_t<std::meta::info> in_items);
+		consteval std::map<std::meta::info, structural_list_t<std::meta::info>> construct_views(
+			const structural_list_t<std::meta::info> in_items
+		);
 
 	public:
 		std::meta::info m_namespace = k_invalid_info;
 		structural_list_t<std::meta::info> m_items;
 		std::meta::info m_schema = k_invalid_info;
+		std::map<std::meta::info, structural_list_t<std::meta::info>> m_views;
 	};
 
 	consteval bool root_t::is_eligible_as_container(const std::meta::info in_info)
@@ -47,7 +57,15 @@ namespace recs::_private
 		: m_namespace(in_namespace)
 		, m_items(std::define_static_array(collect_items(m_namespace)))
 		, m_schema(find_schema(m_items))
+		, m_views(construct_views(m_items))
 	{
+	}
+
+	template<std::meta::info Info>
+	requires(kind_c<Info>)
+	consteval structural_list_t<std::meta::info> root_t::view_items()
+	{
+		return m_views[Info];
 	}
 
 	consteval std::vector<std::meta::info> root_t::collect_items(const std::meta::info in_container)
@@ -76,6 +94,16 @@ namespace recs::_private
 				try_push_back_item(items, member);
 			}
 		}
+
+		// sort items by their kind so we can view them separately.
+		std::ranges::sort(
+			items.begin(),
+			items.end(),
+			[](const std::meta::info in_lhs, const std::meta::info in_rhs)
+			{
+				return kind_t::get_priority(kind_t::get_kind(in_lhs)) < kind_t::get_priority(kind_t::get_kind(in_rhs));
+			}
+		);
 
 		return items;
 	}
@@ -110,6 +138,44 @@ namespace recs::_private
 							 ) |
 							 std::ranges::to<std::vector>();
 		return schemas[0];
+	}
+
+	consteval std::map<std::meta::info, structural_list_t<std::meta::info>> root_t::construct_views(
+		const structural_list_t<std::meta::info> in_items
+	)
+	{
+		std::map<std::meta::info, structural_list_t<std::meta::info>> views;
+
+		// for each kind try to find view range and assing it.
+		// TODO(cantu) this is pretty much too brute force. We can be more clever than this.
+		for (const std::meta::info view_kind : kind_t::get_kinds())
+		{
+			structural_list_t<std::meta::info> view;
+			bool found = false;
+			for (std::size_t index = 0; index < in_items.size(); ++index)
+			{
+				const std::meta::info item = in_items[index];
+				const std::meta::info item_kind = kind_t::get_kind(item);
+				if (!found && item_kind == view_kind)
+				{
+					found = true;
+					view.m_data = &in_items[index];
+					++view.m_size;
+				}
+				else if (found && item_kind == view_kind)
+				{
+					++view.m_size;
+				}
+				else if (found && item_kind != view_kind)
+				{
+					break;
+				}
+			}
+
+			views.insert_or_assign(view_kind, view);
+		}
+
+		return views;
 	}
 } // namespace recs::_private
 

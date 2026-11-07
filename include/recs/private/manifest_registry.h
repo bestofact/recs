@@ -66,7 +66,7 @@ namespace recs::_private
 
 		template<std::meta::info Info>
 		requires(kind_c<Info>)
-		consteval const manifest_t<Info>& find_manifest_of(const std::meta::info in_item);
+		consteval const manifest_t<Info>& find_manifest_of(const std::meta::info in_item) const;
 
 	private:
 		consteval void collect_manifests(const structural_list_t<std::meta::info> in_items);
@@ -108,10 +108,10 @@ namespace recs::_private
 
 	template<std::meta::info Info>
 	requires(kind_c<Info>)
-	consteval const manifest_t<Info>& manifest_registry_t::find_manifest_of(const std::meta::info in_item)
+	consteval const manifest_t<Info>& manifest_registry_t::find_manifest_of(const std::meta::info in_item) const
 	{
-		const std::span<const manifest_t<Info>> manifest_span = get_manifest_span_of_kind<Info>();
-		for (const manifest_t<Info>& manifest : manifest_span)
+		constexpr std::meta::info k_span_member = get_container_member_of_table<Info, ^^manifest_table_span_t>();
+		for (const manifest_t<Info>& manifest : m_table.[:k_span_member:])
 		{
 			if (manifest.m_info == in_item)
 			{

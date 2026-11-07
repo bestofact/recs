@@ -11,7 +11,7 @@ namespace recs
 {
 	struct schema final
 	{
-		const recs::index entity_capacity;
+		const recs::entity_t entity_capacity;
 		const std::meta::info group_enum = recs::_private::k_invalid_info;
 		const std::meta::info default_group = recs::_private::k_invalid_info;
 	};

@@ -14,7 +14,7 @@ namespace test
 {
 	// Helper (not annotated, so not enumerated as a system).
 	template<typename Type>
-	inline void query_component(const recs::index& in_index, GlobalData& out_global_data, const Type& in_type)
+	inline void query_component(const recs::entity_t& in_index, GlobalData& out_global_data, const Type& in_type)
 	{
 		constexpr auto k_access_context = std::meta::access_context::unchecked();
 		template for (constexpr std::meta::info k_member : std::define_static_array(
@@ -34,38 +34,38 @@ namespace test
 		out_global_data.m_map.clear();
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_tag(const recs::index i, GlobalData& d, const Tag& v)
+	[[= recs::system{^^Group::Update}]] inline void query_tag(const recs::entity_t i, GlobalData& d, const Tag& v)
 	{
 		query_component(i, d, v);
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_data(const recs::index i, GlobalData& d, const Data& v)
+	[[= recs::system{^^Group::Update}]] inline void query_data(const recs::entity_t i, GlobalData& d, const Data& v)
 	{
 		query_component(i, d, v);
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_transient_tag(const recs::index i, GlobalData& d, const TransientTag& v)
+	[[= recs::system{^^Group::Update}]] inline void query_transient_tag(const recs::entity_t i, GlobalData& d, const TransientTag& v)
 	{
 		query_component(i, d, v);
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_transient_data(const recs::index i, GlobalData& d, const TransientData& v)
+	[[= recs::system{^^Group::Update}]] inline void query_transient_data(const recs::entity_t i, GlobalData& d, const TransientData& v)
 	{
 		query_component(i, d, v);
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_tag(const recs::index i, GlobalData& d, const HierarchicalTag& v)
+	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_tag(const recs::entity_t i, GlobalData& d, const HierarchicalTag& v)
 	{
 		query_component(i, d, v);
 	}
 
-	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_tag(const recs::index i, GlobalData& d, const HierarchicalTag::ChildTag& v)
+	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_tag(const recs::entity_t i, GlobalData& d, const HierarchicalTag::ChildTag& v)
 	{
 		query_component(i, d, v);
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildTag& v
 	)
@@ -74,7 +74,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_tag_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildTag::ChildTag& v
 	)
@@ -83,7 +83,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_tag_transient_child_tag2(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildTag::TransientChildTag2& v
 	)
@@ -92,7 +92,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_tag_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildTag::ChildData& v
 	)
@@ -101,7 +101,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_tag_transient_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildTag::TransientChildData& v
 	)
@@ -110,7 +110,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::ChildData& v
 	)
@@ -119,7 +119,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_data_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::ChildData::ChildTag& v
 	)
@@ -128,7 +128,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_data_transient_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::ChildData::TransientChildTag& v
 	)
@@ -137,7 +137,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_data_child_data2(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::ChildData::ChildData2& v
 	)
@@ -146,7 +146,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_child_data_transient_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::ChildData::TransientChildData& v
 	)
@@ -155,7 +155,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildData& v
 	)
@@ -164,7 +164,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_data_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildData::ChildTag& v
 	)
@@ -173,7 +173,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_data_transient_child_tag(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildData::TransientChildTag& v
 	)
@@ -182,7 +182,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_data_child_data(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildData::ChildData& v
 	)
@@ -191,7 +191,7 @@ namespace test
 	}
 
 	[[= recs::system{^^Group::Update}]] inline void query_hierarchical_transient_child_data_transient_child_data2(
-		const recs::index i,
+		const recs::entity_t i,
 		GlobalData& d,
 		const HierarchicalTag::TransientChildData::TransientChildData2& v
 	)

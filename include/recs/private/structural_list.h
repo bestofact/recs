@@ -26,6 +26,11 @@ namespace recs::_private
 			return *this;
 		}
 
+		consteval const Type& operator[](const std::size_t in_index) const
+		{
+			return *(m_data + in_index);
+		}
+
 		consteval const Type* begin() const 
 		{
 			return m_data;

@@ -133,11 +133,11 @@ namespace test_features
 
 		ok &= check(scene.next() == 0, "next() on a fresh scene is 0");
 
-		for (recs::index entity = 0; entity < 5; ++entity)
+		for (recs::entity_t entity = 0; entity < 5; ++entity)
 		{
 			scene.set<Marker>(entity);
 		}
-		for (recs::index entity = 1; entity < 5; ++entity)
+		for (recs::entity_t entity = 1; entity < 5; ++entity)
 		{
 			scene.set<Doomed>(entity);
 		}
@@ -154,7 +154,7 @@ namespace test_features
 		scene.reset<Unqueried>(3);
 		ok &= check(scene.get<Unqueried>(3).m_value == 42, "unqueried component storage is reachable");
 
-		for (recs::index entity = 5; entity < 8; ++entity)
+		for (recs::entity_t entity = 5; entity < 8; ++entity)
 		{
 			scene.set<Marker>(entity);
 		}
@@ -169,7 +169,7 @@ namespace test_features
 		ok &= check(counters.m_once_runs == 1, "no-component system runs once per tick");
 		ok &= check(counters.m_flag_sets == 8, "const T& return visits every entity lacking the component");
 
-		for (recs::index entity = 0; entity < 8; ++entity)
+		for (recs::entity_t entity = 0; entity < 8; ++entity)
 		{
 			ok &= check(scene.get<Flip>(entity).m_on == 1, "Flip* return set the component payload");
 			ok &= check(scene.get<Flag>(entity).m_raised == 1, "const T& return wrote the component payload");

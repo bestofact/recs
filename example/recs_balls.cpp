@@ -12,7 +12,7 @@
 
 namespace balls
 {
-	static constexpr recs::index k_ball_count = 1'000'000;
+	static constexpr recs::entity_t k_ball_count = 1'000'000;
 	// Unit quad is multiplied by `extent` (the diameter in pixels) inside the
 	// vertex shader, so the rendered ball radius matches k_ball_radius.
 	static constexpr float k_ball_radius = 6.0f;
@@ -79,7 +79,7 @@ namespace balls
 		Position&&,
 		const Type::Ball&,
 		const Window& in_window,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int hx = example::hash::u32(in_index * 2'654'435'761u + 1u);
@@ -93,7 +93,7 @@ namespace balls
 		Velocity& out_velocity,
 		Velocity&&,
 		const Type::Ball&,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int hx = example::hash::u32(in_index * 374'761'393u + 17u);
@@ -106,7 +106,7 @@ namespace balls
 	[[= recs::system{^^Group::Spawn}]] const Type::Ball& spawn_ball(
 		Type::Ball& out_ball,
 		Type&&,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int h = example::hash::u32(in_index * 2'246'822'519u + 7u);

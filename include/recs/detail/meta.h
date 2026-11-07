@@ -321,42 +321,6 @@ namespace recs::meta
 		return value;
 	}
 
-	consteval bool has_member_functions(const std::meta::info in_type)
-	{
-		const auto members = std::meta::members_of(in_type, std::meta::access_context::unchecked());
-		for (const std::meta::info member : members)
-		{
-			if (std::meta::is_function(member) && std::meta::is_user_declared(member))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	consteval bool has_indirection_member(const std::meta::info in_type)
-	{
-		constexpr auto k_context = std::meta::access_context::unchecked();
-		const auto members = std::meta::nonstatic_data_members_of(in_type, k_context);
-		for (const std::meta::info member : members)
-		{
-			const std::meta::info type = std::meta::dealias(std::meta::type_of(member));
-			if (std::meta::is_pointer_type(type) || std::meta::is_reference_type(type))
-			{
-				return true;
-			}
-
-			const std::meta::info underlying_type =
-				std::meta::is_array_type(type) ? std::meta::dealias(std::meta::remove_all_extents(type)) : type;
-			if (std::meta::is_class_type(underlying_type) && recs::meta::has_indirection_member(underlying_type))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	template<typename... Args>
 	consteval std::string_view format(const std::string_view in_format, const Args&... in_args)
 	{

@@ -1,5 +1,5 @@
 #pragma once
-#include "recs/detail/meta.h"
+#include "recs/private/utils.h"
 #include "recs/private/invalid_info.h"
 #include "recs/private/kind.h"
 
@@ -7,7 +7,7 @@
 
 namespace recs::_private
 {
-	/*
+	/* 
 	 * Primitive is a struct that contains belonging information of a core ecs system.
 	 *
 	*/
@@ -104,13 +104,13 @@ namespace recs::_private
 				return false;
 			}
 
-			if (recs::meta::has_member_functions(m_type))
+			if (utils::has_member_functions(m_type))
 			{
 				set_error("Component must not contain any member functions");
 				return false;
 			}
 
-			if (recs::meta::has_indirection_member(m_type))
+			if (utils::has_indirection_member(m_type))
 			{
 				set_error("Compnent must not contain any indirection member.");
 				return false;
@@ -130,7 +130,7 @@ namespace recs::_private
 				return false;
 			}
 
-			if (recs::meta::has_member_functions(m_type))
+			if (utils::has_member_functions(m_type))
 			{
 				set_error("Component must not contain any member functions");
 				return false;

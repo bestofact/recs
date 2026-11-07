@@ -5,9 +5,10 @@
 #include "recs/private/primitive_registry.h"
 #include "recs/private/manifest.h"
 #include "recs/private/manifest_registry.h"
+#include "recs/private/schedule.h"
 
 #include <meta>
-
+ 
 namespace recs::_private
 {
 	struct registry_t
@@ -20,6 +21,7 @@ namespace recs::_private
 		root_t m_root;
 		primitive_registry_t m_primitives;
 		manifest_registry_t m_manifests;
+		schedule_t m_graph;
 	};
 
 	consteval registry_t::registry_t(const std::meta::info in_namespace)

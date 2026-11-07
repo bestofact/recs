@@ -87,7 +87,7 @@ namespace field
 
 namespace demo
 {
-	static constexpr recs::index k_entity_capacity = 300'000;
+	static constexpr recs::entity_t k_entity_capacity = 300'000;
 
 	enum class Group : size_t
 	{
@@ -277,7 +277,7 @@ namespace demo
 		Position& out_position,
 		Position&&,
 		const Window& in_window,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int hx = example::hash::u32(in_index * 2654435761u + 1u);
@@ -302,7 +302,7 @@ namespace demo
 		Target&&,
 		const TextTargets& in_targets,
 		const Window& in_window,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		if (in_targets.m_count == 0)
@@ -325,7 +325,7 @@ namespace demo
 		Particle&&,
 		const TextTargets& in_targets,
 		const Window& in_window,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		float target_x = in_window.m_width * 0.5f;

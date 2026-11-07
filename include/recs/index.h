@@ -7,13 +7,13 @@
 
 namespace recs
 {
-	struct index final
+	struct entity_t final
 	{
 		using difference_type = int;
 
-		index() = default;
+		entity_t() = default;
 
-		constexpr index(const unsigned int in_value) : m_value(in_value)
+		constexpr entity_t(const unsigned int in_value) : m_value(in_value)
 		{
 		}
 
@@ -27,28 +27,28 @@ namespace recs
 			return m_value;
 		}
 
-		constexpr index& operator++()
+		constexpr entity_t& operator++()
 		{
 			++m_value;
 			return *this;
 		}
 
-		constexpr index operator++(int)
+		constexpr entity_t operator++(int)
 		{
-			const index previous = *this;
+			const entity_t previous = *this;
 			++m_value;
 			return previous;
 		}
 
-		constexpr index& operator--()
+		constexpr entity_t& operator--()
 		{
 			--m_value;
 			return *this;
 		}
 
-		constexpr index operator--(int)
+		constexpr entity_t operator--(int)
 		{
-			const index previous = *this;
+			const entity_t previous = *this;
 			--m_value;
 			return previous;
 		}
@@ -58,14 +58,14 @@ namespace recs
 
 	// Unified sentinel for "no entity". Equals the maximum representable
 	// recs::index value, so it can never collide with a valid slot.
-	inline constexpr index invalid_index{std::numeric_limits<unsigned int>::max()};
+	inline constexpr entity_t invalid_index{std::numeric_limits<unsigned int>::max()};
 } // namespace recs
 
 template<>
-struct std::hash<recs::index>
+struct std::hash<recs::entity_t>
 {
 	[[nodiscard]]
-	size_t operator()(const recs::index& in_index) const noexcept
+	size_t operator()(const recs::entity_t& in_index) const noexcept
 	{
 		return std::hash<unsigned int>{}(in_index.m_value);
 	}

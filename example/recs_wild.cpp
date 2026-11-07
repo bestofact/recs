@@ -20,18 +20,18 @@
 namespace demo
 {
 	// Segmented pools: species inferred from Index, no free-slot list.
-	static constexpr recs::index k_plant_capacity = 3000;
-	static constexpr recs::index k_herbivore_capacity = 250;
-	static constexpr recs::index k_predator_capacity = 40;
+	static constexpr recs::entity_t k_plant_capacity = 3000;
+	static constexpr recs::entity_t k_herbivore_capacity = 250;
+	static constexpr recs::entity_t k_predator_capacity = 40;
 
-	static constexpr recs::index k_plant_begin = 0;
-	static constexpr recs::index k_plant_end = k_plant_begin + k_plant_capacity;
-	static constexpr recs::index k_herbivore_begin = k_plant_end;
-	static constexpr recs::index k_herbivore_end = k_herbivore_begin + k_herbivore_capacity;
-	static constexpr recs::index k_predator_begin = k_herbivore_end;
-	static constexpr recs::index k_predator_end = k_predator_begin + k_predator_capacity;
+	static constexpr recs::entity_t k_plant_begin = 0;
+	static constexpr recs::entity_t k_plant_end = k_plant_begin + k_plant_capacity;
+	static constexpr recs::entity_t k_herbivore_begin = k_plant_end;
+	static constexpr recs::entity_t k_herbivore_end = k_herbivore_begin + k_herbivore_capacity;
+	static constexpr recs::entity_t k_predator_begin = k_herbivore_end;
+	static constexpr recs::entity_t k_predator_end = k_predator_begin + k_predator_capacity;
 
-	static constexpr recs::index k_entity_capacity = k_predator_end;
+	static constexpr recs::entity_t k_entity_capacity = k_predator_end;
 
 	// Phases in execution order. The three Write* sub-phases keep each
 	// species' renderer slice contiguous without explicit edges.
@@ -126,7 +126,7 @@ namespace demo
 	// components, so neighbour lookups must read the position from here.
 	struct GridEntry
 	{
-		recs::index m_index;
+		recs::entity_t m_index;
 		float m_x;
 		float m_y;
 	};
@@ -303,7 +303,7 @@ namespace demo
 		const Species::Plant&,
 		const Position& in_position,
 		SpatialGrid& out_grid,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const int cell = cell_of(out_grid, in_position.m_x, in_position.m_y);
@@ -317,7 +317,7 @@ namespace demo
 		const Species::Herbivore&,
 		const Position& in_position,
 		SpatialGrid& out_grid,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const int cell = cell_of(out_grid, in_position.m_x, in_position.m_y);
@@ -331,7 +331,7 @@ namespace demo
 		const Species::Predator&,
 		const Position& in_position,
 		SpatialGrid& out_grid,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const int cell = cell_of(out_grid, in_position.m_x, in_position.m_y);
@@ -367,7 +367,7 @@ namespace demo
 		const Balance& in_balance,
 		BirthQueue& out_queue,
 		const Time& in_time,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		// In-place update: the accepted write is also the previous value.
@@ -878,7 +878,7 @@ namespace demo
 			const Species::Plant&,
 			const Energy& in_energy,
 			const DeathFlags& in_flags,
-			const recs::index in_index
+			const recs::entity_t in_index
 		)
 	{
 		const bool eaten = in_index < in_flags.m_dead.size() && in_flags.m_dead[in_index] != 0;
@@ -896,7 +896,7 @@ namespace demo
 			const Species::Herbivore&,
 			const Energy& in_energy,
 			const DeathFlags& in_flags,
-			const recs::index in_index
+			const recs::entity_t in_index
 		)
 	{
 		const bool eaten = in_index < in_flags.m_dead.size() && in_flags.m_dead[in_index] != 0;
@@ -967,7 +967,7 @@ namespace demo
 			Velocity&&,
 			BirthQueue& out_queue,
 			const Window& in_window,
-			const recs::index in_index
+			const recs::entity_t in_index
 		)
 	{
 		if (in_index < k_plant_begin || in_index >= k_plant_end)
@@ -1006,7 +1006,7 @@ namespace demo
 		return &out_position;
 	}
 
-	[[= recs::system{^^Group::Respawn}]] const Species::Plant* respawn_plant_tag(Species::Plant& out_plant, Species::Plant&&, const Position&, const recs::index in_index)
+	[[= recs::system{^^Group::Respawn}]] const Species::Plant* respawn_plant_tag(Species::Plant& out_plant, Species::Plant&&, const Position&, const recs::entity_t in_index)
 	{
 		if (in_index < k_plant_begin || in_index >= k_plant_end)
 		{
@@ -1032,7 +1032,7 @@ namespace demo
 			Velocity&&,
 			BirthQueue& out_queue,
 			const Window& in_window,
-			const recs::index in_index
+			const recs::entity_t in_index
 		)
 	{
 		if (in_index < k_herbivore_begin || in_index >= k_herbivore_end)
@@ -1075,7 +1075,7 @@ namespace demo
 		Species::Herbivore& out_tag,
 		Species::Herbivore&&,
 		const Position&,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		if (in_index < k_herbivore_begin || in_index >= k_herbivore_end)
@@ -1090,7 +1090,7 @@ namespace demo
 		Velocity&&,
 		const Species::Herbivore&,
 		const Balance& in_balance,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int h = example::hash::u32(in_index * 16'807u + 17u);
@@ -1122,7 +1122,7 @@ namespace demo
 			Velocity&&,
 			BirthQueue& out_queue,
 			const Window& in_window,
-			const recs::index in_index
+			const recs::entity_t in_index
 		)
 	{
 		if (in_index < k_predator_begin || in_index >= k_predator_end)
@@ -1161,7 +1161,7 @@ namespace demo
 		return &out_position;
 	}
 
-	[[= recs::system{^^Group::Respawn}]] const Species::Predator* respawn_predator_tag(Species::Predator& out_tag, Species::Predator&&, const Position&, const recs::index in_index)
+	[[= recs::system{^^Group::Respawn}]] const Species::Predator* respawn_predator_tag(Species::Predator& out_tag, Species::Predator&&, const Position&, const recs::entity_t in_index)
 	{
 		if (in_index < k_predator_begin || in_index >= k_predator_end)
 		{
@@ -1175,7 +1175,7 @@ namespace demo
 		Velocity&&,
 		const Species::Predator&,
 		const Balance& in_balance,
-		const recs::index in_index
+		const recs::entity_t in_index
 	)
 	{
 		const unsigned int h = example::hash::u32(in_index * 16'807u + 31u);
@@ -1497,7 +1497,7 @@ static void reset_populations(Scene& scene)
 {
 	// Tag every slot Dying; kill_* tears the components down on the next run().
 	// Re-seeded BirthQueue refills via respawn_* on the same frame.
-	for (recs::index i = 0; i < demo::k_entity_capacity; ++i)
+	for (recs::entity_t i = 0; i < demo::k_entity_capacity; ++i)
 	{
 		scene.set<demo::Dying>(i);
 	}

@@ -1,11 +1,15 @@
 #pragma once
 
 #include "recs/private/invalid_info.h"
+#include "recs/private/group.h"
 
 #include <meta>
 #include <ranges>
 #include <span>
 #include <vector>
+
+
+
 
 namespace recs::_private
 {
@@ -31,6 +35,8 @@ namespace recs::_private
 		static consteval std::span<const std::meta::info> get_kinds();
 		// Get kind of a primitive eligible type.
 		static consteval std::meta::info get_kind(const std::meta::info in_info);
+		// Get priority of the kind. Only sensible in terms of sorting by kind.
+		static consteval uint32_t get_priority(const std::meta::info in_kind);
 
 	public:
 		static constexpr std::meta::info k_unkown = k_invalid_info;
@@ -60,7 +66,7 @@ namespace recs::_private
 
 	struct kind_t::system_t
 	{
-		std::meta::info m_group = k_invalid_info;
+		group_t m_group = 0;
 	};
 
 	struct kind_t::schema_t
@@ -107,5 +113,13 @@ namespace recs::_private
 			}
 		}
 		return k_unkown;
+	}
+
+	consteval uint32_t kind_t::get_priority(const std::meta::info in_kind)
+	{
+		constexpr auto k_kinds = get_kinds();
+
+		const auto it = std::ranges::find(k_kinds, in_kind);
+		return std::ranges::distance(k_kinds.begin(), it);
 	}
 } // namespace recs::_private

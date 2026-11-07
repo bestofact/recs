@@ -130,7 +130,7 @@ namespace recs
 				const recs::count count = view.size();
 				for(recs::cursor cursor = 0; cursor < static_cast<recs::cursor>(count); ++cursor)
 				{
-					const recs::index index = view[cursor];
+					const recs::entity_t index = view[cursor];
 					if (!run_system_for_entity<System, ParameterTypes...>(cursor, count, index))
 					{
 						break;

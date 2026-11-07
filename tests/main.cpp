@@ -47,7 +47,7 @@ namespace
 	void seed_entities(TestScene* io_scene, test::GlobalData& out_expected)
 	{
 		constexpr auto k_access = std::meta::access_context::unchecked();
-		constexpr recs::index k_capacity =
+		constexpr recs::entity_t k_capacity =
 			recs::meta::get_annotation<typename[:recs::meta::k_schema:]>(^^test::Schema).entity_capacity;
 		constexpr auto k_components = std::define_static_array(collect_schema_components(^^test::Schema));
 		constexpr size_t k_entities_per_component = k_capacity / k_components.size();
@@ -91,7 +91,7 @@ namespace
 	bool verify_global_data(TestScene* io_scene, const test::GlobalData& in_expected)
 	{
 		constexpr auto k_access = std::meta::access_context::unchecked();
-		constexpr recs::index k_capacity =
+		constexpr recs::entity_t k_capacity =
 			recs::meta::get_annotation<typename[:recs::meta::k_schema:]>(^^test::Schema).entity_capacity;
 
 		const auto& actual = io_scene->get<test::GlobalData>();
