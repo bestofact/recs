@@ -85,15 +85,16 @@ RECS itself is header-only and has no dependencies. Drop `include/recs` into you
 
 ```sh
 xmake setup-clang-p2996    # clone + build + install the toolchain (one-time)
-xmake test                 # build and run the compile-smoke
+xmake test                 # build and run the tests
 ```
 
-The `test` target turns on automatically once the toolchain is on disk.
+Already have clang-p2996? The build looks for it in `.toolchains/` and then takes the first `clang++` on `PATH`, so you can skip the setup step if its `bin/` comes first on `PATH`. Otherwise point the build at it with `xmake f --clang-root=<dir>`.
 
-**Windows.** clang-p2996 needs a GNU-style C++ runtime to link against; the MSVC fuse hasn't produced a working build in testing. `setup-clang-p2996` handles this for you: if no llvm-mingw install is detected (explicit flag, `LLVM_MINGW_PREFIX`, project-local `.toolchains/llvm-mingw`, PATH, scoop, or `C:\llvm-mingw`), it downloads the latest llvm-mingw release into `.toolchains/llvm-mingw/` and uses it as the bootstrap compiler and sysroot for the rest of the build. To reuse an existing install instead, point `--llvm-mingw-prefix` (or `$LLVM_MINGW_PREFIX`) at it.
+**Windows.** clang-p2996 needs a GNU-style C++ runtime to link against; the MSVC fuse hasn't produced a working build in testing. The toolchain targets windows-gnu instead, with the Windows headers and CRT taken from [llvm-mingw][lm]. `setup-clang-p2996` downloads llvm-mingw into `.toolchains/llvm-mingw/` and uses it as the bootstrap compiler and sysroot for the rest of the build. To reuse an existing install, pass `--llvm-mingw=<dir>` to the setup task. The build looks for llvm-mingw in `.toolchains/`, then uses the Mingw SDK xmake finds on `PATH`, or takes `xmake f --sys-root=<dir>`.
 
 [P2996]: https://wg21.link/P2996
 [cp]: https://github.com/bloomberg/clang-p2996
+[lm]: https://github.com/mstorsjo/llvm-mingw
 
 ---
 

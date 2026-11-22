@@ -1,0 +1,17 @@
+option("clang-root")
+	set_showmenu(true)
+	set_default("")
+	set_description("clang-p2996 install directory (default: auto-detect).")
+option_end()
+
+option("sys-root")
+	set_showmenu(true)
+	set_default("")
+	set_description("Sysroot: the llvm-mingw directory on Windows, the SDK on macOS (default: auto-detect).")
+option_end()
+
+option("examples")
+	set_showmenu(true)
+	set_default(false)
+	set_description("Build the example showcases.")
+option_end()
